@@ -7,8 +7,13 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 security = HTTPBasic()
 
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-me-now")
+try:
+    ADMIN_USERNAME = os.environ["ADMIN_USERNAME"]
+    ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+except KeyError as exc:
+    raise RuntimeError(
+        "ADMIN_USERNAME und ADMIN_PASSWORD müssen als Umgebungsvariablen gesetzt sein"
+    ) from exc
 
 ALLOWED_ORIGINS = {
     o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()

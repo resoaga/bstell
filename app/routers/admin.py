@@ -51,7 +51,7 @@ def new_item_form(request: Request, category_id: int | None = None, db: Session 
     )
 
 
-@router.post("/items/new")
+@router.post("/items/new", dependencies=mutating)
 def create_item(
     name: str = Form(...),
     description: str = Form(""),
