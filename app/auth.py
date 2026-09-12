@@ -1,5 +1,6 @@
 import os
 import secrets
+from urllib.parse import urlparse
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -8,6 +9,16 @@ security = HTTPBasic()
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "change-me-now")
+
+ALLOWED_ORIGINS = {
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()
+} | {"http://127.0.0.1:8811", "http://localhost:8811"}
+
+
+def _origin_key(url: str) -> str:
+    parsed = urlparse(url)
+    port_suffix = f":{parsed.port}" if parsed.port else ""
+    return f"{parsed.scheme}://{parsed.hostname}{port_suffix}"
 
 
 def require_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
@@ -25,7 +36,6 @@ def require_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
 def verify_same_origin(request: Request) -> None:
     origin = request.headers.get("origin") or request.headers.get("referer")
     if origin is None:
-        return
-    origin_host = origin.split("://", 1)[-1].split("/", 1)[0]
-    if origin_host != request.url.netloc:
+        raise HTTPException(status_code=403, detail="Fehlende Origin-Angabe")
+    if _origin_key(origin) not in ALLOWED_ORIGINS:
         raise HTTPException(status_code=403, detail="Ungültige Anfrage-Herkunft")
