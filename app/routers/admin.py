@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -38,7 +40,7 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/items/new")
-def new_item_form(request: Request, category_id: int | None = None, db: Session = Depends(get_db)):
+def new_item_form(request: Request, category_id: Optional[int] = None, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
     return templates.TemplateResponse(
         "admin/item_form.html",
