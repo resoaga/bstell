@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ "Artikel bearbeiten" if item else "Neuer Artikel" }}</h2>
+
+<form method="post" action="{{ '/admin/items/%d/edit'|format(item.id) if item else '/admin/items/new' }}">
+  <label>Name
+    <input type="text" name="name" value="{{ item.name if item else '' }}" required>
+  </label>
+  <label>Beschreibung
+    <textarea name="description">{{ item.description if item else '' }}</textarea>
+  </label>
+  <label>Preis (CHF)
+    <input type="number" step="0.05" name="price" value="{{ item.price if item else '' }}" required>
+  </label>
+  <label>Kategorie
+    <select name="category_id" required>
+      {% for c in categories %}
+      <option value="{{ c.id }}"
+        {{ "selected" if (item and item.category_id == c.id) or (preselected_category_id == c.id) else "" }}>
+        {{ c.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Speichern</button>
+</form>
+
+{% if item %}
+<h3>Optionen (z.B. Fleischsorte, Zutaten, Soße)</h3>
+<div id="option-groups">
+  {% include "admin/_option_groups.html" %}
+</div>
+
+<form hx-post="/admin/items/{{ item.id }}/option-groups" hx-target="#option-groups" hx-swap="innerHTML"
+      class="inline-form">
+  <input type="text" name="name" placeholder="z.B. Fleischsorte" required>
+  <select name="selection_type">
+    <option value="single">Einzelauswahl</option>
+    <option value="multiple">Mehrfachauswahl</option>
+  </select>
+  <label class="checkbox-label"><input type="checkbox" name="required" value="true"> Pflicht</label>
+  <button type="submit">Optionsgruppe hinzufügen</button>
+</form>
+{% else %}
+<p class="hint">Optionen (Varianten/Zutaten) können erst hinzugefügt werden, nachdem der Artikel gespeichert wurde.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,5 @@
+{% for group in item.option_groups %}
+{% include "admin/_option_group.html" %}
+{% else %}
+<p class="empty">Noch keine Optionsgruppen.</p>
+{% endfor %}

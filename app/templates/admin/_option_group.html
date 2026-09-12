@@ -1,0 +1,31 @@
+<div class="option-group" id="option-group-{{ group.id }}">
+  <div class="option-group-header">
+    <strong>{{ group.name }}</strong>
+    <span class="tag">
+      {{ "Einzelauswahl" if group.selection_type.value == "single" else "Mehrfachauswahl" }}{{ ", Pflicht" if group.required else "" }}
+    </span>
+    <form hx-post="/admin/option-groups/{{ group.id }}/delete" hx-target="#option-groups" hx-swap="innerHTML"
+          class="inline">
+      <button type="submit" class="danger">Gruppe löschen</button>
+    </form>
+  </div>
+  <ul class="options">
+    {% for option in group.options %}
+    <li>
+      {{ option.name }} ({{ "+" if option.price_delta >= 0 else "" }}{{ "%.2f"|format(option.price_delta) }} CHF)
+      <form hx-post="/admin/options/{{ option.id }}/delete" hx-target="#option-group-{{ group.id }}"
+            hx-swap="outerHTML" class="inline">
+        <button type="submit" class="danger small">×</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="empty">Keine Optionen</li>
+    {% endfor %}
+  </ul>
+  <form hx-post="/admin/option-groups/{{ group.id }}/options" hx-target="#option-group-{{ group.id }}"
+        hx-swap="outerHTML" class="inline-form">
+    <input type="text" name="name" placeholder="z.B. Rind" required>
+    <input type="number" step="0.05" name="price_delta" placeholder="Aufpreis" value="0">
+    <button type="submit">+</button>
+  </form>
+</div>

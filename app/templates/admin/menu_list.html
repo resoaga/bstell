@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="add-category">
+  <form method="post" action="/admin/categories">
+    <input type="text" name="name" placeholder="Neue Kategorie" required>
+    <button type="submit">Kategorie hinzufügen</button>
+  </form>
+</section>
+
+{% for category in categories %}
+<section class="category">
+  <div class="category-header">
+    <h2>{{ category.name }}</h2>
+    <form method="post" action="/admin/categories/{{ category.id }}/delete"
+          onsubmit="return confirm('Kategorie und alle Artikel darin löschen?')">
+      <button type="submit" class="danger">Kategorie löschen</button>
+    </form>
+  </div>
+  <div class="items">
+    {% for item in category.items %}
+    <div class="item-card {{ 'sold-out' if not item.is_available else '' }}">
+      <div class="item-info">
+        <strong>{{ item.name }}</strong>
+        <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
+        <p>{{ item.description }}</p>
+      </div>
+      <div class="item-actions">
+        {% include "admin/_sold_out_button.html" %}
+        <a href="/admin/items/{{ item.id }}/edit">Bearbeiten</a>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Artikel in dieser Kategorie.</p>
+    {% endfor %}
+    <a class="add-item" href="/admin/items/new?category_id={{ category.id }}">+ Artikel hinzufügen</a>
+  </div>
+</section>
+{% else %}
+<p class="empty">Noch keine Kategorien angelegt.</p>
+{% endfor %}
+{% endblock %}

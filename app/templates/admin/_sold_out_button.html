@@ -1,0 +1,7 @@
+<button
+  class="sold-out-btn {{ 'is-sold-out' if not item.is_available else '' }}"
+  hx-post="/admin/items/{{ item.id }}/toggle"
+  hx-swap="outerHTML"
+>
+  {% if item.is_available %}Als ausverkauft markieren{% else %}Wieder verfügbar machen{% endif %}
+</button>

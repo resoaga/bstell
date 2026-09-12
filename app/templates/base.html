@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Bestellsystem – Admin{% endblock %}</title>
+  <script src="/static/htmx.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Bestellsystem – Admin</h1>
+    <a class="topbar-link" href="/admin/menu">Menü</a>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
