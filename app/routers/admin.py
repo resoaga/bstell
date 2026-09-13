@@ -1,6 +1,8 @@
+import os
+import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -20,6 +22,8 @@ from ..models import (
     RestaurantSettings,
     SelectionType,
 )
+
+UPLOAD_DIR = "app/static/uploads"
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
@@ -52,15 +56,30 @@ def get_settings(db: Session) -> RestaurantSettings:
     return settings
 
 
-def get_opening_hours(db: Session) -> list[OpeningHour]:
-    existing = {h.weekday: h for h in db.query(OpeningHour).all()}
-    for weekday in range(7):
-        if weekday not in existing:
-            hour = OpeningHour(weekday=weekday)
-            db.add(hour)
-            existing[weekday] = hour
-    db.commit()
-    return [existing[weekday] for weekday in range(7)]
+def get_opening_hours_by_weekday(db: Session) -> dict:
+    by_day = {weekday: [] for weekday in range(7)}
+    for hour in db.query(OpeningHour).order_by(OpeningHour.weekday, OpeningHour.open_time).all():
+        by_day[hour.weekday].append(hour)
+    return by_day
+
+
+SETTINGS_TABS = [
+    ("general", "Stammdaten"),
+    ("ordering", "Bestellannahme"),
+    ("hours", "Öffnungszeiten"),
+    ("delivery-zone", "Liefergebiet"),
+    ("payment", "Zahlungsdienstleister"),
+    ("email", "E-Mail"),
+    ("customers", "Kunden"),
+]
+
+
+def settings_context(active_tab: str, db: Session) -> dict:
+    return {
+        "settings_tabs": SETTINGS_TABS,
+        "active_settings_tab": active_tab,
+        "settings": get_settings(db),
+    }
 
 
 @router.get("/menu")
@@ -279,28 +298,26 @@ def cancel_order(order_id: int, request: Request, db: Session = Depends(get_db))
 
 
 @router.get("/settings")
-def settings_page(request: Request, db: Session = Depends(get_db)):
-    settings = get_settings(db)
-    hours = get_opening_hours(db)
+def settings_index():
+    return RedirectResponse(url="/admin/settings/general")
+
+
+@router.get("/settings/general")
+def settings_general(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
-        "admin/settings.html",
-        {
-            "request": request,
-            "settings": settings,
-            "hours": hours,
-            "weekday_labels": WEEKDAY_LABELS,
-        },
+        "admin/settings_general.html", {"request": request, **settings_context("general", db)}
     )
 
 
 @router.post("/settings/general", dependencies=mutating)
-def update_general_settings(
+async def update_general_settings(
     name: str = Form(""),
     address_street: str = Form(""),
     address_zip: str = Form(""),
     address_city: str = Form(""),
     phone: str = Form(""),
     email: str = Form(""),
+    logo: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
@@ -310,8 +327,22 @@ def update_general_settings(
     settings.address_city = address_city
     settings.phone = phone
     settings.email = email
+    if logo is not None and logo.filename:
+        extension = os.path.splitext(logo.filename)[1].lower()
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        filename = f"logo-{uuid.uuid4().hex}{extension}"
+        with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
+            f.write(await logo.read())
+        settings.logo_filename = filename
     db.commit()
-    return RedirectResponse(url="/admin/settings", status_code=303)
+    return RedirectResponse(url="/admin/settings/general", status_code=303)
+
+
+@router.get("/settings/ordering")
+def settings_ordering(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_ordering.html", {"request": request, **settings_context("ordering", db)}
+    )
 
 
 @router.post("/settings/ordering", dependencies=mutating)
@@ -330,7 +361,15 @@ def update_ordering_settings(
     settings.minimum_order_value = minimum_order_value
     settings.delivery_fee = delivery_fee
     db.commit()
-    return RedirectResponse(url="/admin/settings", status_code=303)
+    return RedirectResponse(url="/admin/settings/ordering", status_code=303)
+
+
+@router.get("/settings/delivery-zone")
+def settings_delivery_zone(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_delivery_zone.html",
+        {"request": request, **settings_context("delivery-zone", db)},
+    )
 
 
 @router.post("/settings/delivery-zone", dependencies=mutating)
@@ -343,16 +382,135 @@ def update_delivery_zone_settings(
     settings.delivery_zone_center = delivery_zone_center
     settings.delivery_zone_radius_km = delivery_zone_radius_km
     db.commit()
-    return RedirectResponse(url="/admin/settings", status_code=303)
+    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
 
 
-@router.post("/settings/hours", dependencies=mutating)
-async def update_opening_hours(request: Request, db: Session = Depends(get_db)):
-    form = await request.form()
-    hours = get_opening_hours(db)
-    for hour in hours:
-        hour.closed = form.get(f"closed_{hour.weekday}") == "true"
-        hour.open_time = form.get(f"open_{hour.weekday}") or hour.open_time
-        hour.close_time = form.get(f"close_{hour.weekday}") or hour.close_time
+@router.get("/settings/payment")
+def settings_payment(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_payment.html", {"request": request, **settings_context("payment", db)}
+    )
+
+
+@router.post("/settings/payment", dependencies=mutating)
+def update_payment_settings(
+    payrexx_instance: str = Form(""),
+    payrexx_api_key: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.payrexx_instance = payrexx_instance
+    if payrexx_api_key:
+        settings.payrexx_api_key = payrexx_api_key
     db.commit()
-    return RedirectResponse(url="/admin/settings", status_code=303)
+    return RedirectResponse(url="/admin/settings/payment", status_code=303)
+
+
+@router.get("/settings/email")
+def settings_email(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_email.html", {"request": request, **settings_context("email", db)}
+    )
+
+
+@router.post("/settings/email", dependencies=mutating)
+def update_email_settings(
+    smtp_host: str = Form(""),
+    smtp_port: int = Form(587),
+    smtp_username: str = Form(""),
+    smtp_password: str = Form(""),
+    smtp_from_email: str = Form(""),
+    smtp_from_name: str = Form(""),
+    send_order_confirmation: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.smtp_host = smtp_host
+    settings.smtp_port = smtp_port
+    settings.smtp_username = smtp_username
+    if smtp_password:
+        settings.smtp_password = smtp_password
+    settings.smtp_from_email = smtp_from_email
+    settings.smtp_from_name = smtp_from_name
+    settings.send_order_confirmation = send_order_confirmation
+    db.commit()
+    return RedirectResponse(url="/admin/settings/email", status_code=303)
+
+
+@router.get("/settings/customers")
+def settings_customers(request: Request, db: Session = Depends(get_db)):
+    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    customers = {}
+    for order in orders:
+        entry = customers.setdefault(
+            order.phone,
+            {
+                "name": order.customer_name,
+                "phone": order.phone,
+                "address": order.delivery_address,
+                "order_count": 0,
+                "last_order_at": order.created_at,
+            },
+        )
+        entry["order_count"] += 1
+    return templates.TemplateResponse(
+        "admin/settings_customers.html",
+        {
+            "request": request,
+            "customers": sorted(customers.values(), key=lambda c: c["last_order_at"], reverse=True),
+            **settings_context("customers", db),
+        },
+    )
+
+
+@router.get("/settings/hours")
+def settings_hours(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_hours.html",
+        {
+            "request": request,
+            "hours_by_weekday": get_opening_hours_by_weekday(db),
+            "weekday_labels": WEEKDAY_LABELS,
+            **settings_context("hours", db),
+        },
+    )
+
+
+@router.post("/settings/hours/{weekday}/windows", dependencies=mutating)
+def add_opening_hour_window(
+    weekday: int,
+    request: Request,
+    open_time: str = Form("11:00"),
+    close_time: str = Form("22:00"),
+    db: Session = Depends(get_db),
+):
+    db.add(OpeningHour(weekday=weekday, open_time=open_time, close_time=close_time))
+    db.commit()
+    return templates.TemplateResponse(
+        "admin/_opening_hour_day.html",
+        {
+            "request": request,
+            "weekday": weekday,
+            "weekday_label": WEEKDAY_LABELS[weekday],
+            "windows": get_opening_hours_by_weekday(db)[weekday],
+        },
+    )
+
+
+@router.post("/settings/hours/windows/{window_id}/delete", dependencies=mutating)
+def delete_opening_hour_window(window_id: int, request: Request, db: Session = Depends(get_db)):
+    window = db.get(OpeningHour, window_id)
+    if window is None:
+        raise HTTPException(status_code=404, detail="Zeitfenster nicht gefunden")
+    weekday = window.weekday
+    db.delete(window)
+    db.commit()
+    return templates.TemplateResponse(
+        "admin/_opening_hour_day.html",
+        {
+            "request": request,
+            "weekday": weekday,
+            "weekday_label": WEEKDAY_LABELS[weekday],
+            "windows": get_opening_hours_by_weekday(db)[weekday],
+        },
+    )

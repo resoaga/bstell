@@ -1,0 +1,5 @@
+<nav class="settings-nav">
+  {% for slug, label in settings_tabs %}
+  <a class="settings-tab {{ 'active' if slug == active_settings_tab else '' }}" href="/admin/settings/{{ slug }}">{{ label }}</a>
+  {% endfor %}
+</nav>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Öffnungszeiten</h2>
+  <p class="hint">Pro Tag beliebig viele Zeitfenster möglich — z.B. Mittag und Abend getrennt. Ein Tag ohne Zeitfenster gilt als geschlossen.</p>
+  {% for weekday in range(7) %}
+  {% with windows = hours_by_weekday[weekday], weekday_label = weekday_labels[weekday] %}
+  {% include "admin/_opening_hour_day.html" %}
+  {% endwith %}
+  {% endfor %}
+</section>
+{% endblock %}

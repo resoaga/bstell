@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Zahlungsdienstleister</h2>
+  <p class="hint">
+    Zugangsdaten für Payrexx. Der Bezahlstatus pro Bestellung (bezahlt / storniert / fehlgeschlagen) erscheint hier,
+    sobald die eigentliche Payrexx-Anbindung gebaut ist — heute nur die Zugangsdaten.
+  </p>
+  <form method="post" action="/admin/settings/payment">
+    <label>Payrexx-Instanz
+      <input type="text" name="payrexx_instance" value="{{ settings.payrexx_instance }}" placeholder="z.B. meinladen">
+    </label>
+    <label>Payrexx API-Key
+      <input type="password" name="payrexx_api_key" placeholder="{{ 'unverändert lassen, um bestehenden Schlüssel zu behalten' if settings.payrexx_api_key else '' }}">
+    </label>
+    <p class="hint">{{ "API-Key ist gesetzt." if settings.payrexx_api_key else "Noch kein API-Key gesetzt." }}</p>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+{% endblock %}

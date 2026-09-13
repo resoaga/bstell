@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>E-Mail</h2>
+  <p class="hint">
+    SMTP-Zugangsdaten für automatische E-Mails (z.B. Bestellbestätigung). Der eigentliche Versand wird erst
+    angeschlossen, sobald die Bestellstrecke das braucht — heute nur die Zugangsdaten.
+  </p>
+  <form method="post" action="/admin/settings/email">
+    <label>SMTP-Host
+      <input type="text" name="smtp_host" value="{{ settings.smtp_host }}" placeholder="z.B. smtp.gmail.com">
+    </label>
+    <label>SMTP-Port
+      <input type="number" name="smtp_port" value="{{ settings.smtp_port }}">
+    </label>
+    <label>Benutzername
+      <input type="text" name="smtp_username" value="{{ settings.smtp_username }}">
+    </label>
+    <label>Passwort
+      <input type="password" name="smtp_password" placeholder="{{ 'unverändert lassen, um bestehendes Passwort zu behalten' if settings.smtp_password else '' }}">
+    </label>
+    <label>Absender-E-Mail
+      <input type="email" name="smtp_from_email" value="{{ settings.smtp_from_email }}">
+    </label>
+    <label>Absender-Name
+      <input type="text" name="smtp_from_name" value="{{ settings.smtp_from_name }}" placeholder="z.B. Nergele Kebab">
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="send_order_confirmation" value="true" {{ "checked" if settings.send_order_confirmation else "" }}>
+      Bestellbestätigung per E-Mail an Kunden senden
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+{% endblock %}

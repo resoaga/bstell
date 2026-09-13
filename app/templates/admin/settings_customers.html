@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Kunden</h2>
+  <p class="hint">
+    Für den Anfang aus den bestehenden Bestellungen abgeleitet (gruppiert nach Telefonnummer) — eine eigene
+    Kunden-Tabelle mit fester Zuordnung kommt, sobald das Telefonsystem sie braucht.
+  </p>
+  {% for customer in customers %}
+  <div class="item-card">
+    <div class="item-info">
+      <strong>{{ customer.name }}</strong>
+      <span class="price">{{ customer.phone }}</span>
+      <p>{{ customer.address }}</p>
+      <p class="hint">{{ customer.order_count }} Bestellung(en) — zuletzt am {{ customer.last_order_at.strftime("%d.%m.%Y %H:%M") }}</p>
+    </div>
+  </div>
+  {% else %}
+  <p class="empty">Noch keine Bestellungen, also noch keine Kunden.</p>
+  {% endfor %}
+</section>
+{% endblock %}

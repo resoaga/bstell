@@ -202,19 +202,42 @@ label input, label select, label textarea { display: block; margin-top: 4px; }
 .status-badge.status-completed { background: #eee; color: #666; }
 .status-badge.status-cancelled { background: #eee; color: #999; text-decoration: line-through; }
 
-/* ---- Opening hours (admin settings) ---- */
-.opening-hour-row {
+/* ---- Settings sub-navigation ---- */
+.settings-nav {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-top: 1px solid #eee;
+  gap: 8px;
+  margin-bottom: 16px;
 }
-.opening-hour-row:first-of-type { border-top: none; }
-.opening-hour-day { font-size: 14px; font-weight: 600; flex: 1 1 90px; }
-.opening-hour-row input[type="time"] { width: auto; flex: 1 1 100px; }
+.settings-tab {
+  color: #1a73c7;
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #dde3ea;
+}
+.settings-tab.active { background: #1a73c7; color: white; border-color: #1a73c7; }
+
+/* ---- Opening hours (admin settings) ---- */
+.opening-hour-day { padding: 12px 0; border-top: 1px solid #eee; }
+.opening-hour-day:first-of-type { border-top: none; padding-top: 0; }
+.opening-hour-day-header { margin-bottom: 6px; }
+.opening-hour-day-header .tag { margin-left: 8px; font-size: 12px; color: #888; }
+.opening-hour-add-form { align-items: stretch; }
+.opening-hour-times { display: flex; align-items: center; gap: 8px; }
+.opening-hour-times input[type="time"] { width: auto; flex: 1 1 90px; }
 .opening-hour-sep { color: #999; }
+
+.logo-preview {
+  display: block;
+  max-width: 160px;
+  max-height: 80px;
+  margin: 6px 0 10px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
 
 /* ---- Tablet / Desktop ---- */
 @media (min-width: 640px) {

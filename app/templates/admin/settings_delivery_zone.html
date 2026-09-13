@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Liefergebiet</h2>
+  <p class="hint">
+    Wird aktuell nur gespeichert — die automatische Prüfung, ob eine Kundenadresse im Umkreis liegt, ist ein eigenes, größeres Thema und kommt später.
+  </p>
+  <form method="post" action="/admin/settings/delivery-zone">
+    <label>Zentrum (Adresse oder PLZ)
+      <input type="text" name="delivery_zone_center" value="{{ settings.delivery_zone_center }}" placeholder="z.B. 8000 Zürich">
+    </label>
+    <label>Radius (km)
+      <input type="number" step="0.5" min="0" name="delivery_zone_radius_km" value="{{ settings.delivery_zone_radius_km }}">
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+{% endblock %}

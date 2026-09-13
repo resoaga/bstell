@@ -152,12 +152,27 @@ class RestaurantSettings(Base):
     delivery_zone_center = Column(String, default="")
     delivery_zone_radius_km = Column(Float, default=0.0)
 
+    logo_filename = Column(String, default="")
+
+    payrexx_instance = Column(String, default="")
+    payrexx_api_key = Column(String, default="")
+
+    smtp_host = Column(String, default="")
+    smtp_port = Column(Integer, default=587)
+    smtp_username = Column(String, default="")
+    smtp_password = Column(String, default="")
+    smtp_from_email = Column(String, default="")
+    smtp_from_name = Column(String, default="")
+    send_order_confirmation = Column(Boolean, default=True)
+
 
 class OpeningHour(Base):
+    """One time window on one weekday. A weekday with no rows is closed;
+    multiple rows per weekday (e.g. lunch + dinner) are allowed."""
+
     __tablename__ = "opening_hours"
 
     id = Column(Integer, primary_key=True)
-    weekday = Column(Integer, nullable=False, unique=True)
-    closed = Column(Boolean, default=False)
-    open_time = Column(String, default="11:00")
-    close_time = Column(String, default="22:00")
+    weekday = Column(Integer, nullable=False)
+    open_time = Column(String, nullable=False, default="11:00")
+    close_time = Column(String, nullable=False, default="22:00")

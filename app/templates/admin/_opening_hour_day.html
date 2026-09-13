@@ -1,0 +1,26 @@
+<div class="opening-hour-day" id="opening-hour-day-{{ weekday }}">
+  <div class="opening-hour-day-header">
+    <strong>{{ weekday_label }}</strong>
+    {% if not windows %}<span class="tag">Geschlossen</span>{% endif %}
+  </div>
+  <ul class="options">
+    {% for window in windows %}
+    <li>
+      {{ window.open_time }} – {{ window.close_time }}
+      <form hx-post="/admin/settings/hours/windows/{{ window.id }}/delete" hx-target="#opening-hour-day-{{ weekday }}"
+            hx-swap="outerHTML" class="inline">
+        <button type="submit" class="danger small">×</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  <form hx-post="/admin/settings/hours/{{ weekday }}/windows" hx-target="#opening-hour-day-{{ weekday }}"
+        hx-swap="outerHTML" class="inline-form opening-hour-add-form">
+    <div class="opening-hour-times">
+      <input type="time" name="open_time" value="11:00">
+      <span class="opening-hour-sep">–</span>
+      <input type="time" name="close_time" value="22:00">
+    </div>
+    <button type="submit">+ Zeitfenster</button>
+  </form>
+</div>

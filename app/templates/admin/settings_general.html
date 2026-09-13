@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Stammdaten</h2>
+  <form method="post" action="/admin/settings/general" enctype="multipart/form-data">
+    <label>Name des Betriebs
+      <input type="text" name="name" value="{{ settings.name }}">
+    </label>
+    <label>Strasse, Nr.
+      <input type="text" name="address_street" value="{{ settings.address_street }}">
+    </label>
+    <label>PLZ
+      <input type="text" name="address_zip" value="{{ settings.address_zip }}">
+    </label>
+    <label>Ort
+      <input type="text" name="address_city" value="{{ settings.address_city }}">
+    </label>
+    <label>Telefon
+      <input type="tel" name="phone" value="{{ settings.phone }}">
+    </label>
+    <label>E-Mail
+      <input type="email" name="email" value="{{ settings.email }}">
+    </label>
+    <label>Logo
+      {% if settings.logo_filename %}
+      <img class="logo-preview" src="/static/uploads/{{ settings.logo_filename }}" alt="Aktuelles Logo">
+      {% endif %}
+      <input type="file" name="logo" accept="image/*">
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+{% endblock %}
