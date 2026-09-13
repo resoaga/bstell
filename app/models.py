@@ -118,3 +118,46 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False, default=1)
 
     order = relationship("Order", back_populates="items")
+
+
+WEEKDAY_LABELS = {
+    0: "Montag",
+    1: "Dienstag",
+    2: "Mittwoch",
+    3: "Donnerstag",
+    4: "Freitag",
+    5: "Samstag",
+    6: "Sonntag",
+}
+
+
+class RestaurantSettings(Base):
+    __tablename__ = "restaurant_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+
+    name = Column(String, default="")
+    address_street = Column(String, default="")
+    address_zip = Column(String, default="")
+    address_city = Column(String, default="")
+    phone = Column(String, default="")
+    email = Column(String, default="")
+
+    accepting_orders = Column(Boolean, default=True)
+    pickup_enabled = Column(Boolean, default=True)
+    delivery_enabled = Column(Boolean, default=True)
+    minimum_order_value = Column(Float, default=0.0)
+    delivery_fee = Column(Float, default=0.0)
+
+    delivery_zone_center = Column(String, default="")
+    delivery_zone_radius_km = Column(Float, default=0.0)
+
+
+class OpeningHour(Base):
+    __tablename__ = "opening_hours"
+
+    id = Column(Integer, primary_key=True)
+    weekday = Column(Integer, nullable=False, unique=True)
+    closed = Column(Boolean, default=False)
+    open_time = Column(String, default="11:00")
+    close_time = Column(String, default="22:00")

@@ -10,11 +10,25 @@
 <body>
   <header class="topbar">
     <h1>Bestellsystem – Admin</h1>
-    <a class="topbar-link" href="/admin/menu">Menü</a>
-    <a class="topbar-link" href="/admin/orders">Bestellungen</a>
+    <button class="burger-btn" id="burgerBtn" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    <nav class="topbar-nav" id="topbarNav">
+      <a class="topbar-link" href="/admin/menu">Menü</a>
+      <a class="topbar-link" href="/admin/orders">Bestellungen</a>
+      <a class="topbar-link" href="/admin/settings">Einstellungen</a>
+    </nav>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
+  <script>
+    (function () {
+      var btn = document.getElementById('burgerBtn');
+      var nav = document.getElementById('topbarNav');
+      btn.addEventListener('click', function () {
+        var isOpen = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    })();
+  </script>
 </body>
 </html>

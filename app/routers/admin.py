@@ -9,12 +9,15 @@ from ..auth import require_admin, verify_same_origin
 from ..database import get_db
 from ..models import (
     ORDER_STATUS_LABELS,
+    WEEKDAY_LABELS,
     Category,
     MenuItem,
+    OpeningHour,
     Option,
     OptionGroup,
     Order,
     OrderStatus,
+    RestaurantSettings,
     SelectionType,
 )
 
@@ -37,6 +40,27 @@ ORDER_TEMPLATE_EXTRAS = {
     "next_status": ORDER_NEXT_STATUS,
     "next_status_label": ORDER_NEXT_STATUS_LABEL,
 }
+
+
+def get_settings(db: Session) -> RestaurantSettings:
+    settings = db.get(RestaurantSettings, 1)
+    if settings is None:
+        settings = RestaurantSettings(id=1)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+
+def get_opening_hours(db: Session) -> list[OpeningHour]:
+    existing = {h.weekday: h for h in db.query(OpeningHour).all()}
+    for weekday in range(7):
+        if weekday not in existing:
+            hour = OpeningHour(weekday=weekday)
+            db.add(hour)
+            existing[weekday] = hour
+    db.commit()
+    return [existing[weekday] for weekday in range(7)]
 
 
 @router.get("/menu")
@@ -252,3 +276,83 @@ def cancel_order(order_id: int, request: Request, db: Session = Depends(get_db))
         "admin/_order_row_actions.html",
         {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
     )
+
+
+@router.get("/settings")
+def settings_page(request: Request, db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    hours = get_opening_hours(db)
+    return templates.TemplateResponse(
+        "admin/settings.html",
+        {
+            "request": request,
+            "settings": settings,
+            "hours": hours,
+            "weekday_labels": WEEKDAY_LABELS,
+        },
+    )
+
+
+@router.post("/settings/general", dependencies=mutating)
+def update_general_settings(
+    name: str = Form(""),
+    address_street: str = Form(""),
+    address_zip: str = Form(""),
+    address_city: str = Form(""),
+    phone: str = Form(""),
+    email: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.name = name
+    settings.address_street = address_street
+    settings.address_zip = address_zip
+    settings.address_city = address_city
+    settings.phone = phone
+    settings.email = email
+    db.commit()
+    return RedirectResponse(url="/admin/settings", status_code=303)
+
+
+@router.post("/settings/ordering", dependencies=mutating)
+def update_ordering_settings(
+    accepting_orders: bool = Form(False),
+    pickup_enabled: bool = Form(False),
+    delivery_enabled: bool = Form(False),
+    minimum_order_value: float = Form(0.0),
+    delivery_fee: float = Form(0.0),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.accepting_orders = accepting_orders
+    settings.pickup_enabled = pickup_enabled
+    settings.delivery_enabled = delivery_enabled
+    settings.minimum_order_value = minimum_order_value
+    settings.delivery_fee = delivery_fee
+    db.commit()
+    return RedirectResponse(url="/admin/settings", status_code=303)
+
+
+@router.post("/settings/delivery-zone", dependencies=mutating)
+def update_delivery_zone_settings(
+    delivery_zone_center: str = Form(""),
+    delivery_zone_radius_km: float = Form(0.0),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.delivery_zone_center = delivery_zone_center
+    settings.delivery_zone_radius_km = delivery_zone_radius_km
+    db.commit()
+    return RedirectResponse(url="/admin/settings", status_code=303)
+
+
+@router.post("/settings/hours", dependencies=mutating)
+async def update_opening_hours(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    hours = get_opening_hours(db)
+    for hour in hours:
+        hour.closed = form.get(f"closed_{hour.weekday}") == "true"
+        hour.open_time = form.get(f"open_{hour.weekday}") or hour.open_time
+        hour.close_time = form.get(f"close_{hour.weekday}") or hour.close_time
+    db.commit()
+    return RedirectResponse(url="/admin/settings", status_code=303)

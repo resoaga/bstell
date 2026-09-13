@@ -20,12 +20,35 @@ body {
 }
 
 .topbar h1 { font-size: 16px; margin: 0; flex: 1 1 auto; }
+
+.burger-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.burger-btn:hover, .burger-btn:active { background: rgba(255, 255, 255, 0.08); }
+
+.topbar-nav {
+  display: flex;
+  flex-direction: column;
+  flex-basis: 100%;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.topbar-nav.open { max-height: 220px; }
+
 .topbar-link {
   color: #ccc;
   text-decoration: none;
   font-size: 14px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 12px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 .topbar-link:hover, .topbar-link:active { color: white; background: rgba(255, 255, 255, 0.08); }
 
@@ -179,10 +202,34 @@ label input, label select, label textarea { display: block; margin-top: 4px; }
 .status-badge.status-completed { background: #eee; color: #666; }
 .status-badge.status-cancelled { background: #eee; color: #999; text-decoration: line-through; }
 
+/* ---- Opening hours (admin settings) ---- */
+.opening-hour-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+}
+.opening-hour-row:first-of-type { border-top: none; }
+.opening-hour-day { font-size: 14px; font-weight: 600; flex: 1 1 90px; }
+.opening-hour-row input[type="time"] { width: auto; flex: 1 1 100px; }
+.opening-hour-sep { color: #999; }
+
 /* ---- Tablet / Desktop ---- */
 @media (min-width: 640px) {
   .topbar { padding: 16px 24px; }
   .topbar h1 { font-size: 18px; flex: none; }
+
+  .burger-btn { display: none; }
+
+  .topbar-nav {
+    flex-direction: row;
+    flex-basis: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .topbar-link { border-top: none; padding: 8px 10px; }
 
   main { max-width: 900px; margin: 30px auto; padding: 0 20px; }
 
