@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jetzt bestellen</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Jetzt bestellen</h1>
+  </header>
+  <main>
+    <form method="post" action="/order">
+      {% for category in categories %}
+      <section class="category">
+        <div class="category-header"><h2>{{ category.name }}</h2></div>
+        <div class="items">
+          {% for item in category.items if item.is_available %}
+          <div class="item-card">
+            <div class="item-info">
+              <strong>{{ item.name }}</strong>
+              <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
+              <p>{{ item.description }}</p>
+              {% for group in item.option_groups %}
+              <div class="option-choice">
+                <span class="tag">{{ group.name }}{{ " – Pflicht" if group.required else "" }}</span>
+                {% for option in group.options %}
+                <label class="checkbox-label">
+                  <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
+                         name="item_{{ item.id }}_opt_{{ group.id }}" value="{{ option.id }}">
+                  {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
+                </label>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="item-qty">
+              <label>Menge
+                <input type="number" min="0" value="0" name="item_{{ item.id }}_qty">
+              </label>
+            </div>
+          </div>
+          {% else %}
+          <p class="empty">Aktuell keine Artikel verfügbar.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% else %}
+      <p class="empty">Aktuell ist keine Speisekarte verfügbar.</p>
+      {% endfor %}
+
+      <section class="category">
+        <h2>Deine Angaben</h2>
+        <label>Name
+          <input type="text" name="customer_name" required>
+        </label>
+        <label>Telefonnummer
+          <input type="tel" name="phone" required>
+        </label>
+        <label>Lieferadresse
+          <input type="text" name="delivery_address" placeholder="Strasse, Nr., Ort">
+        </label>
+        <label>Anmerkung
+          <textarea name="note"></textarea>
+        </label>
+        <button type="submit">Bestellung abschicken</button>
+      </section>
+    </form>
+  </main>
+</body>
+</html>

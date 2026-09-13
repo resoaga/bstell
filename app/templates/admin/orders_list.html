@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Bestellungen</h2>
+{% for order in orders %}
+<section class="category">
+  <div class="category-header">
+    <h2>#{{ order.id }} — {{ order.customer_name }}</h2>
+    <span class="tag">{{ order.created_at.strftime("%d.%m. %H:%M") }}</span>
+  </div>
+  <p class="hint">
+    {{ order.phone }}{{ " · " + order.delivery_address if order.delivery_address else "" }}
+  </p>
+  <ul class="options">
+    {% for line in order.items %}
+    <li>{{ line.quantity }}× {{ line.item_name }}{{ " (" + line.options_summary + ")" if line.options_summary else "" }}</li>
+    {% endfor %}
+  </ul>
+  {% if order.note %}<p class="hint">Notiz: {{ order.note }}</p>{% endif %}
+  <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
+  <div id="order-actions-{{ order.id }}">
+    {% include "admin/_order_row_actions.html" %}
+  </div>
+</section>
+{% else %}
+<p class="empty">Noch keine Bestellungen.</p>
+{% endfor %}
+{% endblock %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="add-category">
-  <form method="post" action="/admin/categories">
+  <form method="post" action="/admin/categories" class="inline-form">
     <input type="text" name="name" placeholder="Neue Kategorie" required>
     <button type="submit">Kategorie hinzufügen</button>
   </form>

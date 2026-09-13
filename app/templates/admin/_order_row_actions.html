@@ -1,0 +1,15 @@
+<div class="item-actions">
+  <span class="status-badge status-{{ order.status.value }}">{{ status_labels[order.status] }}</span>
+  {% if order.status in next_status %}
+  <form hx-post="/admin/orders/{{ order.id }}/advance" hx-target="#order-actions-{{ order.id }}"
+        hx-swap="innerHTML" class="inline">
+    <button type="submit">{{ next_status_label[order.status] }}</button>
+  </form>
+  {% endif %}
+  {% if order.status.value not in ("completed", "cancelled") %}
+  <form hx-post="/admin/orders/{{ order.id }}/cancel" hx-target="#order-actions-{{ order.id }}"
+        hx-swap="innerHTML" class="inline" onsubmit="return confirm('Bestellung wirklich stornieren?')">
+    <button type="submit" class="danger">Stornieren</button>
+  </form>
+  {% endif %}
+</div>

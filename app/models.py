@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -9,6 +10,23 @@ from .database import Base
 class SelectionType(str, enum.Enum):
     single = "single"
     multiple = "multiple"
+
+
+class OrderStatus(str, enum.Enum):
+    received = "received"
+    preparing = "preparing"
+    ready = "ready"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+ORDER_STATUS_LABELS = {
+    OrderStatus.received: "Neu",
+    OrderStatus.preparing: "In Zubereitung",
+    OrderStatus.ready: "Fertig",
+    OrderStatus.completed: "Abgeschlossen",
+    OrderStatus.cancelled: "Storniert",
+}
 
 
 class Category(Base):
@@ -70,3 +88,33 @@ class Option(Base):
     price_delta = Column(Float, default=0.0)
 
     option_group = relationship("OptionGroup", back_populates="options")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True)
+    customer_name = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    delivery_address = Column(String, default="")
+    note = Column(String, default="")
+    status = Column(Enum(OrderStatus), default=OrderStatus.received, nullable=False)
+    total = Column(Float, nullable=False, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.id"
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    item_name = Column(String, nullable=False)
+    options_summary = Column(String, default="")
+    unit_price = Column(Float, nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+
+    order = relationship("Order", back_populates="items")

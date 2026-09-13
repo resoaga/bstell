@@ -7,11 +7,36 @@ from sqlalchemy.orm import Session
 
 from ..auth import require_admin, verify_same_origin
 from ..database import get_db
-from ..models import Category, MenuItem, Option, OptionGroup, SelectionType
+from ..models import (
+    ORDER_STATUS_LABELS,
+    Category,
+    MenuItem,
+    Option,
+    OptionGroup,
+    Order,
+    OrderStatus,
+    SelectionType,
+)
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
 mutating = [Depends(verify_same_origin)]
+
+ORDER_NEXT_STATUS = {
+    OrderStatus.received: OrderStatus.preparing,
+    OrderStatus.preparing: OrderStatus.ready,
+    OrderStatus.ready: OrderStatus.completed,
+}
+ORDER_NEXT_STATUS_LABEL = {
+    OrderStatus.received: "In Zubereitung nehmen",
+    OrderStatus.preparing: "Als fertig markieren",
+    OrderStatus.ready: "Abschliessen",
+}
+ORDER_TEMPLATE_EXTRAS = {
+    "status_labels": ORDER_STATUS_LABELS,
+    "next_status": ORDER_NEXT_STATUS,
+    "next_status_label": ORDER_NEXT_STATUS_LABEL,
+}
 
 
 @router.get("/menu")
@@ -188,4 +213,42 @@ def delete_option(option_id: int, request: Request, db: Session = Depends(get_db
     group = db.get(OptionGroup, group_id)
     return templates.TemplateResponse(
         "admin/_option_group.html", {"request": request, "group": group}
+    )
+
+
+@router.get("/orders")
+def orders_list(request: Request, db: Session = Depends(get_db)):
+    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    return templates.TemplateResponse(
+        "admin/orders_list.html",
+        {"request": request, "orders": orders, **ORDER_TEMPLATE_EXTRAS},
+    )
+
+
+@router.post("/orders/{order_id}/advance", dependencies=mutating)
+def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    next_status = ORDER_NEXT_STATUS.get(order.status)
+    if next_status is None:
+        raise HTTPException(status_code=400, detail="Kein weiterer Status möglich")
+    order.status = next_status
+    db.commit()
+    return templates.TemplateResponse(
+        "admin/_order_row_actions.html",
+        {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
+    )
+
+
+@router.post("/orders/{order_id}/cancel", dependencies=mutating)
+def cancel_order(order_id: int, request: Request, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    order.status = OrderStatus.cancelled
+    db.commit()
+    return templates.TemplateResponse(
+        "admin/_order_row_actions.html",
+        {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
     )
