@@ -25,6 +25,24 @@ from ..models import (
 
 UPLOAD_DIR = "app/static/uploads"
 
+# Signature (magic bytes) -> file extension, checked against actual upload content
+# rather than the client-supplied filename, so only real raster images can be saved.
+LOGO_SIGNATURES = [
+    (b"\x89PNG\r\n\x1a\n", ".png"),
+    (b"\xff\xd8\xff", ".jpg"),
+    (b"GIF87a", ".gif"),
+    (b"GIF89a", ".gif"),
+]
+
+
+def detect_logo_extension(data: bytes) -> Optional[str]:
+    for signature, extension in LOGO_SIGNATURES:
+        if data.startswith(signature):
+            return extension
+    if data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
 mutating = [Depends(verify_same_origin)]
@@ -328,11 +346,17 @@ async def update_general_settings(
     settings.phone = phone
     settings.email = email
     if logo is not None and logo.filename:
-        extension = os.path.splitext(logo.filename)[1].lower()
+        data = await logo.read()
+        extension = detect_logo_extension(data)
+        if extension is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Logo muss ein PNG-, JPEG-, GIF- oder WebP-Bild sein",
+            )
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         filename = f"logo-{uuid.uuid4().hex}{extension}"
         with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
-            f.write(await logo.read())
+            f.write(data)
         settings.logo_filename = filename
     db.commit()
     return RedirectResponse(url="/admin/settings/general", status_code=303)
