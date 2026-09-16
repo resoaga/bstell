@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -18,6 +18,17 @@ class OrderStatus(str, enum.Enum):
     ready = "ready"
     completed = "completed"
     cancelled = "cancelled"
+
+
+class OrderType(str, enum.Enum):
+    pickup = "pickup"
+    delivery = "delivery"
+
+
+ORDER_TYPE_LABELS = {
+    OrderType.pickup: "Abholung",
+    OrderType.delivery: "Lieferung",
+}
 
 
 ORDER_STATUS_LABELS = {
@@ -50,7 +61,9 @@ class MenuItem(Base):
     description = Column(String, default="")
     price = Column(Float, nullable=False)
     is_available = Column(Boolean, default=True)
+    is_new = Column(Boolean, default=False)
     sort_order = Column(Integer, default=0)
+    image_filename = Column(String, default="")
 
     category = relationship("Category", back_populates="items")
     option_groups = relationship(
@@ -96,6 +109,8 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     customer_name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
+    customer_zip = Column(String, default="")
+    order_type = Column(Enum(OrderType), default=OrderType.delivery, nullable=False)
     delivery_address = Column(String, default="")
     note = Column(String, default="")
     status = Column(Enum(OrderStatus), default=OrderStatus.received, nullable=False)
@@ -154,6 +169,18 @@ class RestaurantSettings(Base):
 
     logo_filename = Column(String, default="")
 
+    hero_headline = Column(String, default="")
+    hero_subheadline = Column(String, default="")
+    hero_image_filename = Column(String, default="")
+    promo_banner_enabled = Column(Boolean, default=False)
+    promo_banner_text = Column(String, default="")
+    estimated_pickup_minutes = Column(Integer, default=15)
+    estimated_delivery_minutes = Column(Integer, default=30)
+    badge_1 = Column(String, default="")
+    badge_2 = Column(String, default="")
+    badge_3 = Column(String, default="")
+    rating_text = Column(String, default="")
+
     payrexx_instance = Column(String, default="")
     payrexx_api_key = Column(String, default="")
 
@@ -164,6 +191,25 @@ class RestaurantSettings(Base):
     smtp_from_email = Column(String, default="")
     smtp_from_name = Column(String, default="")
     send_order_confirmation = Column(Boolean, default=True)
+
+
+class ContentPage(Base):
+    """Editable public-facing text (legal pages) with a fixed set of slugs
+    seeded on first access, similar to RestaurantSettings' singleton row."""
+
+    __tablename__ = "content_pages"
+
+    id = Column(Integer, primary_key=True)
+    slug = Column(String, unique=True, nullable=False)
+    title = Column(String, default="")
+    body = Column(Text, default="")
+
+
+CONTENT_PAGE_DEFAULTS = [
+    ("datenschutz", "Datenschutz", ""),
+    ("agb", "AGB", ""),
+    ("widerruf", "Widerrufsrecht", ""),
+]
 
 
 class OpeningHour(Base):

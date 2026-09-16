@@ -1,0 +1,8 @@
+{% extends "site/site_base.html" %}
+{% block content %}
+<h1 class="page-title">Warenkorb</h1>
+<div id="cart-lines">
+  {% include "site/_cart_lines.html" %}
+</div>
+<a class="back-link" href="/speisekarte">← Weiter einkaufen</a>
+{% endblock %}

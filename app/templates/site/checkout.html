@@ -1,0 +1,51 @@
+{% extends "site/site_base.html" %}
+{% block content %}
+<h1 class="page-title">Kasse</h1>
+
+{% if error %}<p class="notice">{{ error }}</p>{% endif %}
+
+<section class="category">
+  <h2>Deine Bestellung</h2>
+  <ul class="options">
+    {% for line in lines %}
+    <li>
+      {{ line.quantity }}× {{ line.item.name }}{% if line.options %} ({{ line.options|map(attribute='name')|join(', ') }}){% endif %}
+      <span>CHF {{ "%.2f"|format(line.line_total) }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p><strong>Total: CHF {{ "%.2f"|format(total) }}</strong>{% if settings.delivery_enabled and settings.delivery_fee %} (zzgl. CHF {{ "%.2f"|format(settings.delivery_fee) }} bei Lieferung){% endif %}</p>
+</section>
+
+<form method="post" action="/kasse" class="category">
+  <label>Name
+    <input type="text" name="customer_name" value="{{ contact.customer_name or '' }}" required>
+  </label>
+  <label>Telefonnummer
+    <input type="tel" name="phone" value="{{ contact.phone or '' }}" required>
+  </label>
+  <label>PLZ
+    <input type="text" name="customer_zip" value="{{ contact.customer_zip or '' }}" required>
+  </label>
+
+  {% if settings.pickup_enabled and settings.delivery_enabled %}
+  <div class="option-choice">
+    <span class="tag">Abholung oder Lieferung</span>
+    <label class="checkbox-label"><input type="radio" name="order_type" value="delivery" checked> Lieferung</label>
+    <label class="checkbox-label"><input type="radio" name="order_type" value="pickup"> Abholung</label>
+  </div>
+  {% endif %}
+
+  <label>Lieferadresse
+    <input type="text" name="delivery_address" value="{{ contact.delivery_address or '' }}" placeholder="Strasse, Nr., Ort">
+  </label>
+  <label>Anmerkung
+    <textarea name="note"></textarea>
+  </label>
+  <label class="checkbox-label">
+    <input type="checkbox" name="remember_contact" value="1" checked>
+    Angaben für nächstes Mal speichern (nur ein Cookie, kein Konto nötig)
+  </label>
+  <button type="submit">Bestellung abschicken</button>
+</form>
+{% endblock %}

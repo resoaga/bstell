@@ -2,7 +2,7 @@
 {% block content %}
 <h2>{{ "Artikel bearbeiten" if item else "Neuer Artikel" }}</h2>
 
-<form method="post" action="{{ '/admin/items/%d/edit'|format(item.id) if item else '/admin/items/new' }}">
+<form method="post" action="{{ '/admin/items/%d/edit'|format(item.id) if item else '/admin/items/new' }}" enctype="multipart/form-data">
   <label>Name
     <input type="text" name="name" value="{{ item.name if item else '' }}" required>
   </label>
@@ -21,6 +21,12 @@
       </option>
       {% endfor %}
     </select>
+  </label>
+  <label>Foto
+    {% if item and item.image_filename %}
+    <img class="logo-preview" src="/static/uploads/{{ item.image_filename }}" alt="Aktuelles Foto von {{ item.name }}">
+    {% endif %}
+    <input type="file" name="image" accept="image/*">
   </label>
   <button type="submit">Speichern</button>
 </form>

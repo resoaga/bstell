@@ -19,9 +19,9 @@ from ..models import (
     OptionGroup,
     Order,
     OrderStatus,
-    RestaurantSettings,
     SelectionType,
 )
+from ..repo import get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
 
 UPLOAD_DIR = "app/static/uploads"
 
@@ -42,6 +42,20 @@ def detect_logo_extension(data: bytes) -> Optional[str]:
     if data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
         return ".webp"
     return None
+
+
+async def save_uploaded_image(upload: UploadFile, prefix: str) -> str:
+    data = await upload.read()
+    extension = detect_logo_extension(data)
+    if extension is None:
+        raise HTTPException(
+            status_code=400, detail="Bild muss ein PNG-, JPEG-, GIF- oder WebP-Bild sein"
+        )
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    filename = f"{prefix}-{uuid.uuid4().hex}{extension}"
+    with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
+        f.write(data)
+    return filename
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
@@ -64,30 +78,15 @@ ORDER_TEMPLATE_EXTRAS = {
 }
 
 
-def get_settings(db: Session) -> RestaurantSettings:
-    settings = db.get(RestaurantSettings, 1)
-    if settings is None:
-        settings = RestaurantSettings(id=1)
-        db.add(settings)
-        db.commit()
-        db.refresh(settings)
-    return settings
-
-
-def get_opening_hours_by_weekday(db: Session) -> dict:
-    by_day = {weekday: [] for weekday in range(7)}
-    for hour in db.query(OpeningHour).order_by(OpeningHour.weekday, OpeningHour.open_time).all():
-        by_day[hour.weekday].append(hour)
-    return by_day
-
-
 SETTINGS_TABS = [
     ("general", "Stammdaten"),
+    ("website", "Webseite"),
     ("ordering", "Bestellannahme"),
     ("hours", "Öffnungszeiten"),
     ("delivery-zone", "Liefergebiet"),
     ("payment", "Zahlungsdienstleister"),
     ("email", "E-Mail"),
+    ("legal", "Rechtliches"),
     ("customers", "Kunden"),
 ]
 
@@ -140,14 +139,17 @@ def new_item_form(request: Request, category_id: Optional[int] = None, db: Sessi
 
 
 @router.post("/items/new", dependencies=mutating)
-def create_item(
+async def create_item(
     name: str = Form(...),
     description: str = Form(""),
     price: float = Form(...),
     category_id: int = Form(...),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     item = MenuItem(name=name, description=description, price=price, category_id=category_id)
+    if image is not None and image.filename:
+        item.image_filename = await save_uploaded_image(image, "item")
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -167,12 +169,13 @@ def edit_item_form(item_id: int, request: Request, db: Session = Depends(get_db)
 
 
 @router.post("/items/{item_id}/edit", dependencies=mutating)
-def update_item(
+async def update_item(
     item_id: int,
     name: str = Form(...),
     description: str = Form(""),
     price: float = Form(...),
     category_id: int = Form(...),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     item = db.get(MenuItem, item_id)
@@ -182,6 +185,8 @@ def update_item(
     item.description = description
     item.price = price
     item.category_id = category_id
+    if image is not None and image.filename:
+        item.image_filename = await save_uploaded_image(image, "item")
     db.commit()
     return RedirectResponse(url=f"/admin/items/{item_id}/edit", status_code=303)
 
@@ -205,6 +210,18 @@ def toggle_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
     return templates.TemplateResponse(
         "admin/_sold_out_button.html", {"request": request, "item": item}
+    )
+
+
+@router.post("/items/{item_id}/toggle-new", dependencies=mutating)
+def toggle_new(item_id: int, request: Request, db: Session = Depends(get_db)):
+    item = db.get(MenuItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    item.is_new = not item.is_new
+    db.commit()
+    return templates.TemplateResponse(
+        "admin/_new_button.html", {"request": request, "item": item}
     )
 
 
@@ -346,20 +363,74 @@ async def update_general_settings(
     settings.phone = phone
     settings.email = email
     if logo is not None and logo.filename:
-        data = await logo.read()
-        extension = detect_logo_extension(data)
-        if extension is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Logo muss ein PNG-, JPEG-, GIF- oder WebP-Bild sein",
-            )
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        filename = f"logo-{uuid.uuid4().hex}{extension}"
-        with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
-            f.write(data)
-        settings.logo_filename = filename
+        settings.logo_filename = await save_uploaded_image(logo, "logo")
     db.commit()
     return RedirectResponse(url="/admin/settings/general", status_code=303)
+
+
+@router.get("/settings/website")
+def settings_website(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_website.html", {"request": request, **settings_context("website", db)}
+    )
+
+
+@router.post("/settings/website", dependencies=mutating)
+async def update_website_settings(
+    hero_headline: str = Form(""),
+    hero_subheadline: str = Form(""),
+    promo_banner_enabled: bool = Form(False),
+    promo_banner_text: str = Form(""),
+    estimated_pickup_minutes: int = Form(15),
+    estimated_delivery_minutes: int = Form(30),
+    badge_1: str = Form(""),
+    badge_2: str = Form(""),
+    badge_3: str = Form(""),
+    rating_text: str = Form(""),
+    hero_image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    settings.hero_headline = hero_headline
+    settings.hero_subheadline = hero_subheadline
+    settings.promo_banner_enabled = promo_banner_enabled
+    settings.promo_banner_text = promo_banner_text
+    settings.estimated_pickup_minutes = estimated_pickup_minutes
+    settings.estimated_delivery_minutes = estimated_delivery_minutes
+    settings.badge_1 = badge_1
+    settings.badge_2 = badge_2
+    settings.badge_3 = badge_3
+    settings.rating_text = rating_text
+    if hero_image is not None and hero_image.filename:
+        settings.hero_image_filename = await save_uploaded_image(hero_image, "hero")
+    db.commit()
+    return RedirectResponse(url="/admin/settings/website", status_code=303)
+
+
+@router.get("/settings/legal")
+def settings_legal(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_legal.html",
+        {
+            "request": request,
+            "pages": get_all_content_pages(db),
+            **settings_context("legal", db),
+        },
+    )
+
+
+@router.post("/settings/legal/{slug}", dependencies=mutating)
+def update_legal_page(
+    slug: str,
+    title: str = Form(""),
+    body: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    page = get_content_page(db, slug)
+    page.title = title
+    page.body = body
+    db.commit()
+    return RedirectResponse(url="/admin/settings/legal", status_code=303)
 
 
 @router.get("/settings/ordering")

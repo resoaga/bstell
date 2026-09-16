@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ settings.name or "Jetzt bestellen" }}{% endblock %}</title>
+  <script src="/static/htmx.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="site">
+  <header class="site-header">
+    <a class="site-logo" href="/">
+      {% if settings.logo_filename %}
+      <img src="/static/uploads/{{ settings.logo_filename }}" alt="{{ settings.name }}">
+      {% else %}
+      {{ settings.name or "Speisekarte" }}
+      {% endif %}
+    </a>
+    <nav class="site-nav">
+      <a href="/speisekarte">Speisekarte</a>
+      <a href="/verfolgen">Bestellung verfolgen</a>
+    </nav>
+  </header>
+
+  {% if settings.promo_banner_enabled and settings.promo_banner_text %}
+  <div class="promo-banner">{{ settings.promo_banner_text }}</div>
+  {% endif %}
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer-info">
+      {% if settings.name %}<strong>{{ settings.name }}</strong><br>{% endif %}
+      {% if settings.address_street %}{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}<br>{% endif %}
+      {% if settings.phone %}Tel. {{ settings.phone }}{% endif %}
+    </div>
+    <nav class="site-footer-links">
+      {% for page in legal_pages %}
+      <a href="/rechtliches/{{ page.slug }}">{{ page.title }}</a>
+      {% endfor %}
+    </nav>
+  </footer>
+
+  {% include "site/_cart_bar.html" %}
+</body>
+</html>

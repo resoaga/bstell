@@ -1,0 +1,29 @@
+{% if lines %}
+<ul class="cart-list">
+  {% for line in lines %}
+  <li class="cart-line">
+    <div class="cart-line-info">
+      <strong>{{ line.item.name }}</strong>
+      {% if line.options %}<span class="cart-line-options">{{ line.options|map(attribute='name')|join(', ') }}</span>{% endif %}
+      <span class="price">CHF {{ "%.2f"|format(line.unit_price) }} / Stk.</span>
+    </div>
+    <div class="cart-line-actions">
+      <input type="number" min="1" value="{{ line.quantity }}"
+             hx-post="/warenkorb/menge" hx-trigger="change" name="quantity"
+             hx-vals='{"key": "{{ line.key }}"}' hx-target="#cart-lines" hx-swap="innerHTML">
+      <span class="cart-line-total">CHF {{ "%.2f"|format(line.line_total) }}</span>
+      <button type="button" class="danger small" hx-post="/warenkorb/entfernen"
+              hx-vals='{"key": "{{ line.key }}"}' hx-target="#cart-lines" hx-swap="innerHTML">Entfernen</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+<p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total) }}</strong></p>
+{% if below_minimum %}
+<p class="notice">Mindestbestellwert ist CHF {{ "%.2f"|format(settings.minimum_order_value) }}.</p>
+{% else %}
+<a class="btn-primary" href="/kasse">Zur Kasse</a>
+{% endif %}
+{% else %}
+<p class="empty">Der Warenkorb ist leer. <a class="text-link" href="/speisekarte">Jetzt bestellen</a></p>
+{% endif %}

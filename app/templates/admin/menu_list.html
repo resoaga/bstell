@@ -19,6 +19,9 @@
   <div class="items">
     {% for item in category.items %}
     <div class="item-card {{ 'sold-out' if not item.is_available else '' }}">
+      {% if item.image_filename %}
+      <img class="item-thumb" src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}">
+      {% endif %}
       <div class="item-info">
         <strong>{{ item.name }}</strong>
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
@@ -26,6 +29,7 @@
       </div>
       <div class="item-actions">
         {% include "admin/_sold_out_button.html" %}
+        {% include "admin/_new_button.html" %}
         <a href="/admin/items/{{ item.id }}/edit">Bearbeiten</a>
       </div>
     </div>

@@ -15,6 +15,14 @@ except KeyError as exc:
         "ADMIN_USERNAME und ADMIN_PASSWORD müssen als Umgebungsvariablen gesetzt sein"
     ) from exc
 
+try:
+    SESSION_SECRET_KEY = os.environ["SESSION_SECRET_KEY"]
+except KeyError as exc:
+    raise RuntimeError(
+        "SESSION_SECRET_KEY muss als Umgebungsvariable gesetzt sein (signiert Warenkorb- "
+        "und Kontakt-Cookies der öffentlichen Webseite)"
+    ) from exc
+
 ALLOWED_ORIGINS = {
     o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()
 } | {"http://127.0.0.1:8811", "http://localhost:8811"}

@@ -1,0 +1,28 @@
+{% extends "site/site_base.html" %}
+{% block content %}
+{% if order %}
+<h1 class="page-title">Danke für deine Bestellung!</h1>
+<section class="category">
+  <h2>Bestellung #{{ order.id }}</h2>
+  <p>
+    <span class="status-badge status-{{ order.status.value }}">{{ status_label }}</span>
+    <span class="type-label">{{ type_label }}</span>
+  </p>
+  <ul class="options">
+    {% for line in order.items %}
+    <li>
+      {{ line.quantity }}× {{ line.item_name }}{{ " (" + line.options_summary + ")" if line.options_summary else "" }}
+      <span>CHF {{ "%.2f"|format(line.unit_price * line.quantity) }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
+  <p class="hint">
+    Verfolge deine Bestellung mit Bestellnummer <strong>{{ order.id }}</strong> und PLZ <strong>{{ order.customer_zip }}</strong>:
+    <a class="text-link" href="/verfolgen?bestellnummer={{ order.id }}&plz={{ order.customer_zip }}">Bestellung verfolgen</a>
+  </p>
+</section>
+{% else %}
+<p class="empty">Bestellung nicht gefunden.</p>
+{% endif %}
+{% endblock %}

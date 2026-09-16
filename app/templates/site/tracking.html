@@ -1,0 +1,37 @@
+{% extends "site/site_base.html" %}
+{% block head_extra %}
+{% if order and order.status.value in ("received", "preparing") %}
+<meta http-equiv="refresh" content="240;url=/verfolgen?bestellnummer={{ order.id }}&plz={{ order.customer_zip }}">
+{% endif %}
+{% endblock %}
+{% block content %}
+<h1 class="page-title">Bestellung verfolgen</h1>
+<form method="get" action="/verfolgen" class="category">
+  <label>Bestellnummer
+    <input type="text" name="bestellnummer" value="{{ bestellnummer }}" required>
+  </label>
+  <label>PLZ
+    <input type="text" name="plz" value="{{ plz }}" required>
+  </label>
+  <button type="submit">Status anzeigen</button>
+</form>
+
+{% if not_found %}
+<p class="notice">Keine passende Bestellung gefunden. Bitte Bestellnummer und PLZ prüfen.</p>
+{% elif order %}
+<section class="category">
+  <h2>Bestellung #{{ order.id }}</h2>
+  <p>
+    <span class="status-badge status-{{ order.status.value }}">{{ status_label }}</span>
+    <span class="type-label">{{ type_label }}</span>
+  </p>
+  {% if remaining_minutes is not none %}
+  <p>
+    {% if remaining_minutes > 0 %}Voraussichtlich noch ca. {{ remaining_minutes }} Minuten.
+    {% else %}Sollte gleich fertig sein.{% endif %}
+  </p>
+  {% endif %}
+  <p class="hint">Diese Seite aktualisiert sich automatisch alle paar Minuten – kein Live-Tracking.</p>
+</section>
+{% endif %}
+{% endblock %}

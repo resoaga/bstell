@@ -1,0 +1,12 @@
+{% extends "site/site_base.html" %}
+{% block title %}{{ page.title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ page.title }}</h1>
+{% if paragraphs %}
+{% for para in paragraphs %}
+<p>{{ para }}</p>
+{% endfor %}
+{% else %}
+<p class="empty">Noch kein Text hinterlegt.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Startseite / Hero</h2>
+  <form method="post" action="/admin/settings/website" enctype="multipart/form-data">
+    <label>Überschrift
+      <input type="text" name="hero_headline" value="{{ settings.hero_headline }}" placeholder="z.B. Frisch. Schnell. Zum Mitnehmen.">
+    </label>
+    <label>Unterzeile
+      <input type="text" name="hero_subheadline" value="{{ settings.hero_subheadline }}" placeholder="z.B. Jetzt online bestellen – fertig in Minuten">
+    </label>
+    <label>Hero-Bild
+      {% if settings.hero_image_filename %}
+      <img class="logo-preview" src="/static/uploads/{{ settings.hero_image_filename }}" alt="Aktuelles Hero-Bild">
+      {% endif %}
+      <input type="file" name="hero_image" accept="image/*">
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="promo_banner_enabled" {{ 'checked' if settings.promo_banner_enabled else '' }}>
+      Aktions-Banner anzeigen
+    </label>
+    <label>Aktions-Text
+      <input type="text" name="promo_banner_text" value="{{ settings.promo_banner_text }}" placeholder="z.B. Diese Woche: 10% auf alle Döner">
+    </label>
+    <label>Geschätzte Zeit bei Abholung (Minuten)
+      <input type="number" min="0" name="estimated_pickup_minutes" value="{{ settings.estimated_pickup_minutes }}">
+    </label>
+    <label>Geschätzte Zeit bei Lieferung (Minuten)
+      <input type="number" min="0" name="estimated_delivery_minutes" value="{{ settings.estimated_delivery_minutes }}">
+    </label>
+    <label>Vertrauens-Merkmal 1
+      <input type="text" name="badge_1" value="{{ settings.badge_1 }}" placeholder="z.B. 100% Halal">
+    </label>
+    <label>Vertrauens-Merkmal 2
+      <input type="text" name="badge_2" value="{{ settings.badge_2 }}" placeholder="z.B. Frisch zubereitet">
+    </label>
+    <label>Vertrauens-Merkmal 3
+      <input type="text" name="badge_3" value="{{ settings.badge_3 }}" placeholder="z.B. Hausgemachte Saucen">
+    </label>
+    <label>Bewertung (Text, z.B. von Google)
+      <input type="text" name="rating_text" value="{{ settings.rating_text }}" placeholder="z.B. 4.9 ★ (341 Bewertungen)">
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+{% endblock %}

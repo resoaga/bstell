@@ -1,0 +1,57 @@
+{% extends "site/site_base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <h1>{{ settings.hero_headline or "Vom Grill auf deinen Teller" }}</h1>
+    {% if settings.hero_subheadline %}<p class="hero-sub">{{ settings.hero_subheadline }}</p>{% endif %}
+    <a class="btn-primary" href="/speisekarte">Jetzt bestellen</a>
+    {% if settings.rating_text %}<p class="hero-rating">{{ settings.rating_text }}</p>{% endif %}
+  </div>
+  {% if settings.hero_image_filename %}
+  <div class="hero-photo">
+    <img src="/static/uploads/{{ settings.hero_image_filename }}" alt="{{ settings.name }}">
+  </div>
+  {% endif %}
+</section>
+
+{% if settings.badge_1 or settings.badge_2 or settings.badge_3 %}
+<section class="badge-row">
+  {% for badge in [settings.badge_1, settings.badge_2, settings.badge_3] %}
+  {% if badge %}<span class="badge-pill">{{ badge }}</span>{% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="info-strip">
+  {% if settings.pickup_enabled %}
+  <div class="info-chip">
+    <span class="info-chip-label">Abholung</span>
+    <span class="info-chip-value">ca. {{ settings.estimated_pickup_minutes }} Min.</span>
+  </div>
+  {% endif %}
+  {% if settings.delivery_enabled %}
+  <div class="info-chip">
+    <span class="info-chip-label">Lieferung</span>
+    <span class="info-chip-value">ca. {{ settings.estimated_delivery_minutes }} Min.</span>
+  </div>
+  {% endif %}
+</section>
+
+<section class="hours-section">
+  <h2>Öffnungszeiten</h2>
+  <ul class="hours-list">
+    {% for weekday in range(7) %}
+    <li class="hours-row">
+      <span class="hours-day">{{ weekday_labels[weekday] }}</span>
+      <span class="hours-windows">
+        {% if hours_by_weekday[weekday] %}
+        {% for window in hours_by_weekday[weekday] %}{{ window.open_time }}–{{ window.close_time }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}
+        geschlossen
+        {% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
