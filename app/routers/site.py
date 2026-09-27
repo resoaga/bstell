@@ -77,6 +77,7 @@ def site_extra(request: Request, db: Session) -> dict:
         "cart_total": cart_total,
         "legal_pages": get_all_content_pages(db),
         "hours_by_weekday": hours_by_weekday,
+        "weekday_labels": WEEKDAY_LABELS,
         "is_open": is_currently_open(hours_by_weekday),
         "restaurant_schema_json": _restaurant_schema_json(settings, hours_by_weekday),
     }
@@ -84,23 +85,16 @@ def site_extra(request: Request, db: Session) -> dict:
 
 @router.get("/")
 def homepage(request: Request, db: Session = Depends(get_db)):
+    categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
     return templates.TemplateResponse(
         "site/index.html",
-        {
-            "request": request,
-            "weekday_labels": WEEKDAY_LABELS,
-            **site_extra(request, db),
-        },
+        {"request": request, "categories": categories, **site_extra(request, db)},
     )
 
 
 @router.get("/speisekarte")
-def menu_page(request: Request, db: Session = Depends(get_db)):
-    categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
-    return templates.TemplateResponse(
-        "site/menu.html",
-        {"request": request, "categories": categories, **site_extra(request, db)},
-    )
+def menu_page_redirect():
+    return RedirectResponse(url="/", status_code=301)
 
 
 @router.post("/speisekarte/hinzufuegen")
@@ -145,6 +139,15 @@ async def add_to_cart(request: Request, db: Session = Depends(get_db)):
                 {
                     "request": request,
                     "error": f'Bitte "{group.name}" auswählen.',
+                    **site_extra(request, db),
+                },
+            )
+        if group.max_selections and len(selected) > group.max_selections:
+            return templates.TemplateResponse(
+                "site/_add_result.html",
+                {
+                    "request": request,
+                    "error": f'Bei "{group.name}" sind maximal {group.max_selections} Auswahlen möglich.',
                     **site_extra(request, db),
                 },
             )

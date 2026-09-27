@@ -44,9 +44,11 @@
     <option value="single">Einzelauswahl</option>
     <option value="multiple">Mehrfachauswahl</option>
   </select>
+  <input type="number" name="max_selections" placeholder="Max. Auswahl (optional)" min="1">
   <label class="checkbox-label"><input type="checkbox" name="required" value="true"> Pflicht</label>
   <button type="submit">Optionsgruppe hinzufügen</button>
 </form>
+<p class="hint">Tipp: eine nicht-pflichtige Gruppe (z.B. "Extra Sauce") wird auf der Webseite automatisch im eigenen "Extras"-Abschnitt am Ende des Bestell-Popups angezeigt.</p>
 {% else %}
 <p class="hint">Optionen (Varianten/Zutaten) können erst hinzugefügt werden, nachdem der Artikel gespeichert wurde.</p>
 {% endif %}

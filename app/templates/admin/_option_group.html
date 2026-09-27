@@ -2,7 +2,7 @@
   <div class="option-group-header">
     <strong>{{ group.name }}</strong>
     <span class="tag">
-      {{ "Einzelauswahl" if group.selection_type.value == "single" else "Mehrfachauswahl" }}{{ ", Pflicht" if group.required else "" }}
+      {{ "Einzelauswahl" if group.selection_type.value == "single" else "Mehrfachauswahl" }}{{ ", Pflicht" if group.required else " – Extra" }}{{ " (max. %d)"|format(group.max_selections) if group.max_selections else "" }}
     </span>
     <form hx-post="/admin/option-groups/{{ group.id }}/delete" hx-target="#option-groups" hx-swap="innerHTML"
           class="inline">

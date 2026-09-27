@@ -27,13 +27,15 @@
       {% endif %}
     </a>
     <nav class="site-nav">
-      <a href="/speisekarte">Speisekarte</a>
       <a href="/verfolgen">Bestellung verfolgen</a>
     </nav>
   </header>
 
+  {% set shop_state = "open" if (is_open and settings.accepting_orders) else ("paused" if is_open else "closed") %}
   <div class="status-strip">
-    <span class="status-pill {{ 'is-open' if is_open else 'is-closed' }}">{{ "Geöffnet" if is_open else "Geschlossen" }}</span>
+    <span class="status-pill status-{{ shop_state }}">
+      {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% endif %}
+    </span>
     {% if settings.address_street %}
     <span class="status-address">{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</span>
     {% endif %}
@@ -60,16 +62,28 @@
   </div>
 
   <footer class="site-footer">
+    <div class="site-footer-brand">
+      {% if settings.logo_filename %}
+      <img src="/static/uploads/{{ settings.logo_filename }}" alt="{{ settings.name }}" class="site-footer-logo">
+      {% elif settings.name %}
+      <strong>{{ settings.name }}</strong>
+      {% endif %}
+    </div>
     <div class="site-footer-info">
-      {% if settings.name %}<strong>{{ settings.name }}</strong><br>{% endif %}
       {% if settings.address_street %}{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}<br>{% endif %}
       {% if settings.phone %}Tel. {{ settings.phone }}{% endif %}
     </div>
+    <p class="site-footer-hours">
+      {% for weekday in range(7) %}
+      <span class="footer-hours-row">{{ weekday_labels[weekday] }}: {% if hours_by_weekday[weekday] %}{% for window in hours_by_weekday[weekday] %}{{ window.open_time }}–{{ window.close_time }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}geschlossen{% endif %}</span>
+      {% endfor %}
+    </p>
     <nav class="site-footer-links">
       {% for page in legal_pages %}
       <a href="/rechtliches/{{ page.slug }}">{{ page.title }}</a>
       {% endfor %}
     </nav>
+    <p class="site-footer-credit">Website-Technik: <span class="footer-credit-placeholder">[Platzhalter – eigene Werbung]</span></p>
   </footer>
 
   {% include "site/_cart_bar.html" %}

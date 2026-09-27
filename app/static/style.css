@@ -359,8 +359,10 @@ body.site .status-pill {
   font-weight: 700;
   font-size: 12px;
 }
-body.site .status-pill.is-open { background: #e6f4ea; color: #1e7e34; }
-body.site .status-pill.is-closed { background: #fdecea; color: #c0392b; }
+body.site .status-strip { justify-content: space-between; }
+body.site .status-pill.status-open { background: #e6f4ea; color: #1e7e34; }
+body.site .status-pill.status-paused { background: #fdecea; color: #c0392b; }
+body.site .status-pill.status-closed { background: #eee; color: #666; }
 body.site .status-address { color: #6b6b6b; }
 
 body.site .trust-strip {
@@ -434,7 +436,7 @@ body.site .hero {
   gap: 24px;
 }
 body.site .hero-copy { max-width: 34ch; }
-body.site .hero-copy h1 {
+body.site .hero-copy .hero-heading {
   color: #fdfbf8;
   font-size: 30px;
   font-weight: 800;
@@ -498,7 +500,7 @@ body.site .notice {
 }
 
 body.site .category { background: transparent; box-shadow: none; border-radius: 0; padding: 0; margin-bottom: 30px; }
-body.site .category h2 {
+body.site .category h1 {
   font-size: 18px;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--accent);
@@ -609,7 +611,23 @@ body.site .item-dialog {
   padding: 20px;
   max-width: 360px;
   width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+body.site .option-extras {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--line);
+}
+body.site .extras-tag {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.03em;
 }
 body.site .item-dialog::backdrop { background: rgba(20, 15, 10, 0.55); }
 body.site .item-dialog h3 { margin: 0 0 4px; font-size: 17px; font-weight: 800; }
@@ -626,20 +644,6 @@ body.site .dialog-close {
   padding: 4px;
 }
 body.site .dialog-close:hover, body.site .dialog-close:active { background: none; color: var(--ink); }
-
-/* ---- Opening hours ---- */
-body.site .hours-section { margin-bottom: 30px; }
-body.site .hours-list { list-style: none; padding: 0; margin: 0; }
-body.site .hours-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
-  font-size: 14px;
-}
-body.site .hours-row:first-child { border-top: none; }
-body.site .hours-day { color: var(--ink); font-weight: 700; }
-body.site .hours-windows { color: #6b6b6b; }
 
 body.site input, body.site select, body.site textarea {
   border: 1px solid var(--line);
@@ -717,19 +721,25 @@ body.site .site-footer {
   font-size: 13px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 14px;
 }
-body.site .site-footer strong { color: #fdfbf8; }
-body.site .site-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+body.site .site-footer strong { color: #fdfbf8; font-size: 16px; }
+body.site .site-footer-logo { max-height: 40px; display: block; }
+body.site .site-footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 body.site .site-footer-links a { color: var(--accent); text-decoration: none; }
 body.site .site-footer-links a:hover, body.site .site-footer-links a:active { color: #fff; }
+body.site .site-footer-hours { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 12px; color: #a89f92; }
+body.site .site-footer-credit { margin: 0; font-size: 12px; color: #a89f92; }
+body.site .footer-credit-placeholder { font-style: italic; }
 
 @media (min-width: 640px) {
   body.site .site-header { padding: 16px 26px; }
   body.site .status-strip, body.site .trust-strip { padding-left: 26px; padding-right: 26px; }
   body.site .hero { flex-direction: row; align-items: center; justify-content: space-between; padding: 44px 40px; }
-  body.site .hero-copy h1 { font-size: 36px; }
-  body.site .site-footer { flex-direction: row; justify-content: space-between; padding: 26px; }
+  body.site .hero-copy .hero-heading { font-size: 36px; }
+  body.site .site-footer { padding: 26px; }
   body.site .cart-line { flex-direction: row; align-items: center; justify-content: space-between; }
   body.site .menu-grid { grid-template-columns: repeat(2, 1fr); }
 }

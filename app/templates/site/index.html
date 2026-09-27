@@ -2,9 +2,9 @@
 {% block content %}
 <section class="hero">
   <div class="hero-copy">
-    <h1>{{ settings.hero_headline or "Vom Grill auf deinen Teller" }}</h1>
+    <p class="hero-heading">{{ settings.hero_headline or "Vom Grill auf deinen Teller" }}</p>
     {% if settings.hero_subheadline %}<p class="hero-sub">{{ settings.hero_subheadline }}</p>{% endif %}
-    <a class="btn-primary" href="/speisekarte">Jetzt bestellen</a>
+    <a class="btn-primary" href="#menu-top">Jetzt bestellen</a>
   </div>
   {% if settings.hero_image_filename %}
   <div class="hero-photo">
@@ -28,21 +28,143 @@
   {% endif %}
 </section>
 
-<section class="hours-section">
-  <h2>Öffnungszeiten</h2>
-  <ul class="hours-list">
-    {% for weekday in range(7) %}
-    <li class="hours-row">
-      <span class="hours-day">{{ weekday_labels[weekday] }}</span>
-      <span class="hours-windows">
-        {% if hours_by_weekday[weekday] %}
-        {% for window in hours_by_weekday[weekday] %}{{ window.open_time }}–{{ window.close_time }}{% if not loop.last %}, {% endif %}{% endfor %}
+<input type="search" id="menu-search" class="menu-search" placeholder="Gericht suchen …" aria-label="Gericht suchen">
+
+{% if not settings.accepting_orders %}
+<p class="notice">Wir nehmen aktuell keine Bestellungen an.</p>
+{% endif %}
+
+<nav class="category-pills" id="menu-top">
+  <a class="category-pill" href="#menu-top">Alle</a>
+  {% for category in categories %}
+  <a class="category-pill" href="#cat-{{ category.id }}">{{ category.name }}</a>
+  {% endfor %}
+</nav>
+
+{% for category in categories %}
+<section class="category" id="cat-{{ category.id }}">
+  <h1>{{ category.name }}</h1>
+  <div class="menu-grid">
+    {% for item in category.items if item.is_available %}
+    {% set required_groups = item.option_groups | selectattr("required") | list %}
+    {% set extra_groups = item.option_groups | rejectattr("required") | list %}
+    <div class="menu-card" data-name="{{ item.name|lower }}">
+      <div class="menu-card-media">
+        {% if item.image_filename %}
+        <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy">
         {% else %}
-        geschlossen
+        <div class="menu-card-placeholder" aria-hidden="true"></div>
         {% endif %}
-      </span>
-    </li>
+        {% if item.is_new %}<span class="badge-new">Neu</span>{% endif %}
+      </div>
+      <div class="menu-card-body">
+        <strong>{{ item.name }}</strong>
+        {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+        <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
+      </div>
+      {% if settings.accepting_orders %}
+      <div class="menu-card-action">
+        {% if item.option_groups %}
+        <button type="button" class="add-btn" aria-label="{{ item.name }} auswählen"
+                onclick="document.getElementById('dlg-{{ item.id }}').showModal()">+</button>
+        <dialog id="dlg-{{ item.id }}" class="item-dialog">
+          <button type="button" class="dialog-close" aria-label="Schließen"
+                  onclick="this.closest('dialog').close()">×</button>
+          <h3>{{ item.name }}</h3>
+          <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
+          <form class="add-form" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            {% for group in required_groups %}
+            <div class="option-choice">
+              <span class="tag">{{ group.name }} – Pflicht{{ " (max. %d)"|format(group.max_selections) if group.max_selections else "" }}</span>
+              {% for option in group.options %}
+              <label class="checkbox-label">
+                <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
+                       name="opt_{{ group.id }}" value="{{ option.id }}"
+                       {% if group.max_selections %}data-group="{{ group.id }}" data-group-max="{{ group.max_selections }}"{% endif %}>
+                {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
+              </label>
+              {% endfor %}
+            </div>
+            {% endfor %}
+            {% if extra_groups %}
+            <div class="option-extras">
+              <span class="tag extras-tag">Extras</span>
+              {% for group in extra_groups %}
+              <div class="option-choice">
+                <span class="tag">{{ group.name }}</span>
+                {% for option in group.options %}
+                <label class="checkbox-label">
+                  <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
+                         name="opt_{{ group.id }}" value="{{ option.id }}"
+                         {% if group.max_selections %}data-group="{{ group.id }}" data-group-max="{{ group.max_selections }}"{% endif %}>
+                  {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
+                </label>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            <div class="add-row">
+              <label class="qty-label">Menge <input type="number" name="qty" min="1" value="1"></label>
+              <button type="submit">In den Warenkorb</button>
+            </div>
+            <div id="feedback-{{ item.id }}" class="add-feedback-slot"></div>
+          </form>
+        </dialog>
+        {% else %}
+        <form class="add-form-instant" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <input type="hidden" name="qty" value="1">
+          <button type="submit" class="add-btn" aria-label="{{ item.name }} hinzufügen">+</button>
+        </form>
+        <div id="feedback-{{ item.id }}" class="add-feedback-slot"></div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="empty">Aktuell keine Artikel verfügbar.</p>
     {% endfor %}
-  </ul>
+  </div>
 </section>
+{% else %}
+<p class="empty">Aktuell ist keine Speisekarte verfügbar.</p>
+{% endfor %}
+
+<script>
+  (function () {
+    var search = document.getElementById('menu-search');
+    if (search) {
+      search.addEventListener('input', function () {
+        var query = search.value.trim().toLowerCase();
+        document.querySelectorAll('.menu-card').forEach(function (card) {
+          card.classList.toggle('is-hidden', query.length > 0 && card.dataset.name.indexOf(query) === -1);
+        });
+        document.querySelectorAll('.category').forEach(function (section) {
+          var visible = section.querySelectorAll('.menu-card:not(.is-hidden)').length > 0;
+          section.classList.toggle('is-hidden', query.length > 0 && !visible);
+        });
+      });
+    }
+
+    document.querySelectorAll('input[data-group-max]').forEach(function (input) {
+      if (input.type !== 'checkbox') return;
+      input.addEventListener('change', function () {
+        var groupId = input.dataset.group;
+        var max = parseInt(input.dataset.groupMax, 10);
+        var checked = document.querySelectorAll('input[data-group="' + groupId + '"]:checked');
+        if (checked.length > max) { input.checked = false; }
+      });
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      var target = evt.detail.target;
+      if (target && target.classList.contains('add-feedback-slot') && target.querySelector('.add-feedback.ok')) {
+        var dialog = target.closest('dialog');
+        if (dialog) setTimeout(function () { dialog.close(); }, 500);
+      }
+    });
+  })();
+</script>
 {% endblock %}

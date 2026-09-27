@@ -232,6 +232,7 @@ def add_option_group(
     name: str = Form(...),
     selection_type: SelectionType = Form(SelectionType.single),
     required: bool = Form(False),
+    max_selections: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     item = db.get(MenuItem, item_id)
@@ -239,7 +240,11 @@ def add_option_group(
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
     db.add(
         OptionGroup(
-            menu_item_id=item_id, name=name, selection_type=selection_type, required=required
+            menu_item_id=item_id,
+            name=name,
+            selection_type=selection_type,
+            required=required,
+            max_selections=max_selections if selection_type == SelectionType.multiple else None,
         )
     )
     db.commit()

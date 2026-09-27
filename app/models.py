@@ -82,6 +82,7 @@ class OptionGroup(Base):
     name = Column(String, nullable=False)
     selection_type = Column(Enum(SelectionType), default=SelectionType.single)
     required = Column(Boolean, default=False)
+    max_selections = Column(Integer, nullable=True)
 
     menu_item = relationship("MenuItem", back_populates="option_groups")
     options = relationship(
