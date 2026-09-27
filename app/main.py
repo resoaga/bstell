@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import SESSION_SECRET_KEY
 from .database import Base, engine
-from .routers import admin, site
+from .routers import admin, api, site
 
 Base.metadata.create_all(bind=engine)
 
@@ -13,3 +13,4 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY, same_site="
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(site.router)
 app.include_router(admin.router)
+app.include_router(api.router)

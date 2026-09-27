@@ -1,5 +1,33 @@
 {% extends "site/site_base.html" %}
 {% block content %}
+{% if active_combos %}
+<section class="hero hero-combos" data-autorotate="{{ 'true' if active_combos|length > 1 else 'false' }}">
+  {% for combo in active_combos %}
+  <div class="combo-slide{{ ' is-active' if loop.first else '' }}">
+    <div class="combo-photos">
+      <div class="combo-photo">
+        {% if combo.item_a.image_filename %}
+        <img src="/static/uploads/{{ combo.item_a.image_filename }}" alt="{{ combo.item_a.name }}" loading="lazy">
+        {% else %}
+        <div class="menu-card-placeholder" aria-hidden="true"></div>
+        {% endif %}
+      </div>
+      <span class="combo-plus">+</span>
+      <div class="combo-photo">
+        {% if combo.item_b.image_filename %}
+        <img src="/static/uploads/{{ combo.item_b.image_filename }}" alt="{{ combo.item_b.name }}" loading="lazy">
+        {% else %}
+        <div class="menu-card-placeholder" aria-hidden="true"></div>
+        {% endif %}
+      </div>
+    </div>
+    <p class="combo-names">{{ combo.item_a.name }} + {{ combo.item_b.name }}</p>
+    <p class="combo-price">nur CHF {{ "%.2f"|format(combo.combo_price) }}</p>
+    <a class="btn-primary" href="#menu-top">Jetzt bestellen</a>
+  </div>
+  {% endfor %}
+</section>
+{% else %}
 <section class="hero">
   <div class="hero-copy">
     <p class="hero-heading">{{ settings.hero_headline or "Vom Grill auf deinen Teller" }}</p>
@@ -12,6 +40,7 @@
   </div>
   {% endif %}
 </section>
+{% endif %}
 
 <section class="info-strip">
   {% if settings.pickup_enabled %}
@@ -146,6 +175,17 @@
           section.classList.toggle('is-hidden', query.length > 0 && !visible);
         });
       });
+    }
+
+    var comboSection = document.querySelector('.hero-combos[data-autorotate="true"]');
+    if (comboSection) {
+      var slides = comboSection.querySelectorAll('.combo-slide');
+      var current = 0;
+      setInterval(function () {
+        slides[current].classList.remove('is-active');
+        current = (current + 1) % slides.length;
+        slides[current].classList.add('is-active');
+      }, 4000);
     }
 
     document.querySelectorAll('input[data-group-max]').forEach(function (input) {

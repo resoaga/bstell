@@ -22,6 +22,7 @@ from ..models import (
     OrderType,
 )
 from ..repo import (
+    get_active_combos,
     get_all_content_pages,
     get_content_page,
     get_opening_hours_by_weekday,
@@ -88,7 +89,12 @@ def homepage(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
     return templates.TemplateResponse(
         "site/index.html",
-        {"request": request, "categories": categories, **site_extra(request, db)},
+        {
+            "request": request,
+            "categories": categories,
+            "active_combos": get_active_combos(db),
+            **site_extra(request, db),
+        },
     )
 
 

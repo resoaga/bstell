@@ -186,6 +186,8 @@ class RestaurantSettings(Base):
     payrexx_instance = Column(String, default="")
     payrexx_api_key = Column(String, default="")
 
+    freiwirt_api_token = Column(String, default="")
+
     smtp_host = Column(String, default="")
     smtp_port = Column(Integer, default=587)
     smtp_username = Column(String, default="")
@@ -193,6 +195,27 @@ class RestaurantSettings(Base):
     smtp_from_email = Column(String, default="")
     smtp_from_name = Column(String, default="")
     send_order_confirmation = Column(Boolean, default=True)
+
+
+class Combo(Base):
+    """A manually-priced pairing of two menu items (e.g. Döner + Cola) shown
+    as a slide in the homepage hero when enabled. Dates are plain ISO strings
+    ("YYYY-MM-DD"), matching OpeningHour's string-time convention — empty
+    means no limit on that side."""
+
+    __tablename__ = "combos"
+
+    id = Column(Integer, primary_key=True)
+    item_a_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
+    item_b_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
+    combo_price = Column(Float, nullable=False)
+    enabled = Column(Boolean, default=False)
+    start_date = Column(String, default="")
+    end_date = Column(String, default="")
+    sort_order = Column(Integer, default=0)
+
+    item_a = relationship("MenuItem", foreign_keys=[item_a_id])
+    item_b = relationship("MenuItem", foreign_keys=[item_b_id])
 
 
 class ContentPage(Base):

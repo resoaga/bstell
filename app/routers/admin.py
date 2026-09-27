@@ -1,4 +1,5 @@
 import os
+import secrets
 import uuid
 from typing import Optional
 
@@ -13,6 +14,7 @@ from ..models import (
     ORDER_STATUS_LABELS,
     WEEKDAY_LABELS,
     Category,
+    Combo,
     MenuItem,
     OpeningHour,
     Option,
@@ -373,10 +375,22 @@ async def update_general_settings(
     return RedirectResponse(url="/admin/settings/general", status_code=303)
 
 
+MAX_COMBOS = 5
+
+
 @router.get("/settings/website")
 def settings_website(request: Request, db: Session = Depends(get_db)):
+    combos = db.query(Combo).order_by(Combo.sort_order, Combo.id).all()
+    all_items = db.query(MenuItem).order_by(MenuItem.name).all()
     return templates.TemplateResponse(
-        "admin/settings_website.html", {"request": request, **settings_context("website", db)}
+        "admin/settings_website.html",
+        {
+            "request": request,
+            "combos": combos,
+            "all_items": all_items,
+            "max_combos": MAX_COMBOS,
+            **settings_context("website", db),
+        },
     )
 
 
@@ -410,6 +424,50 @@ async def update_website_settings(
     settings.accent_color = accent_color or "#c8102e"
     if hero_image is not None and hero_image.filename:
         settings.hero_image_filename = await save_uploaded_image(hero_image, "hero")
+    db.commit()
+    return RedirectResponse(url="/admin/settings/website", status_code=303)
+
+
+@router.post("/combos", dependencies=mutating)
+def create_combo(
+    item_a_id: int = Form(...),
+    item_b_id: int = Form(...),
+    combo_price: float = Form(...),
+    start_date: str = Form(""),
+    end_date: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if db.query(Combo).count() >= MAX_COMBOS:
+        raise HTTPException(status_code=400, detail="Maximal 5 Kombos erlaubt.")
+    db.add(
+        Combo(
+            item_a_id=item_a_id,
+            item_b_id=item_b_id,
+            combo_price=combo_price,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    )
+    db.commit()
+    return RedirectResponse(url="/admin/settings/website", status_code=303)
+
+
+@router.post("/combos/{combo_id}/toggle", dependencies=mutating)
+def toggle_combo(combo_id: int, db: Session = Depends(get_db)):
+    combo = db.get(Combo, combo_id)
+    if combo is None:
+        raise HTTPException(status_code=404, detail="Kombo nicht gefunden")
+    combo.enabled = not combo.enabled
+    db.commit()
+    return RedirectResponse(url="/admin/settings/website", status_code=303)
+
+
+@router.post("/combos/{combo_id}/delete", dependencies=mutating)
+def delete_combo(combo_id: int, db: Session = Depends(get_db)):
+    combo = db.get(Combo, combo_id)
+    if combo is None:
+        raise HTTPException(status_code=404, detail="Kombo nicht gefunden")
+    db.delete(combo)
     db.commit()
     return RedirectResponse(url="/admin/settings/website", status_code=303)
 
@@ -462,6 +520,14 @@ def update_ordering_settings(
     settings.delivery_enabled = delivery_enabled
     settings.minimum_order_value = minimum_order_value
     settings.delivery_fee = delivery_fee
+    db.commit()
+    return RedirectResponse(url="/admin/settings/ordering", status_code=303)
+
+
+@router.post("/settings/freiwirt-token/regenerate", dependencies=mutating)
+def regenerate_freiwirt_token(db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    settings.freiwirt_api_token = secrets.token_hex(24)
     db.commit()
     return RedirectResponse(url="/admin/settings/ordering", status_code=303)
 

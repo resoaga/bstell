@@ -28,4 +28,18 @@
     <button type="submit">Speichern</button>
   </form>
 </section>
+
+<section class="category">
+  <h2>Freiwirt-Anbindung</h2>
+  <p class="hint">Mit diesem Token kann Freiwirt (die Kassen-Software im Laden) die Lieferung per API an/aus schalten, ohne sich als Admin einzuloggen.</p>
+  {% if settings.freiwirt_api_token %}
+  <p><code>{{ settings.freiwirt_api_token }}</code></p>
+  {% else %}
+  <p class="empty">Noch kein Token erzeugt.</p>
+  {% endif %}
+  <form method="post" action="/admin/settings/freiwirt-token/regenerate" class="inline">
+    <button type="submit" class="danger">{{ "Neues Token erzeugen" if settings.freiwirt_api_token else "Token erzeugen" }}</button>
+  </form>
+  <p class="hint">Achtung: ein neues Token macht das alte sofort ungültig.</p>
+</section>
 {% endblock %}

@@ -453,6 +453,27 @@ body.site .hero-photo {
 }
 body.site .hero-photo img { display: block; width: 100%; }
 
+body.site .hero-combos { display: block; }
+body.site .combo-slide { display: none; }
+body.site .combo-slide.is-active { display: block; animation: combo-fade 0.4s ease; }
+@keyframes combo-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+body.site .combo-photos { display: flex; align-items: center; gap: 12px; }
+body.site .combo-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+  flex: none;
+}
+body.site .combo-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.site .combo-plus { font-size: 22px; font-weight: 800; color: #fdfbf8; }
+body.site .combo-names { margin: 14px 0 2px; font-weight: 700; font-size: 16px; color: #fdfbf8; }
+body.site .combo-price { margin: 0 0 18px; font-size: 24px; font-weight: 800; color: var(--accent); }
+
 body.site .btn-primary {
   display: inline-block;
   background: var(--accent);
