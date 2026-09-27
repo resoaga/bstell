@@ -23,7 +23,7 @@
     <div class="menu-card" data-name="{{ item.name|lower }}">
       <div class="menu-card-media">
         {% if item.image_filename %}
-        <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}">
+        <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy">
         {% else %}
         <div class="menu-card-placeholder" aria-hidden="true"></div>
         {% endif %}
@@ -31,30 +31,49 @@
       </div>
       <div class="menu-card-body">
         <strong>{{ item.name }}</strong>
-        <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+        <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
       </div>
       {% if settings.accepting_orders %}
-      <form class="add-form" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
-        <input type="hidden" name="item_id" value="{{ item.id }}">
-        {% for group in item.option_groups %}
-        <div class="option-choice">
-          <span class="tag">{{ group.name }}{{ " – Pflicht" if group.required else "" }}</span>
-          {% for option in group.options %}
-          <label class="checkbox-label">
-            <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
-                   name="opt_{{ group.id }}" value="{{ option.id }}">
-            {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
-          </label>
-          {% endfor %}
-        </div>
-        {% endfor %}
-        <div class="add-row">
-          <label class="qty-label">Menge <input type="number" name="qty" min="1" value="1"></label>
-          <button type="submit">In den Warenkorb</button>
-        </div>
+      <div class="menu-card-action">
+        {% if item.option_groups %}
+        <button type="button" class="add-btn" aria-label="{{ item.name }} auswählen"
+                onclick="document.getElementById('dlg-{{ item.id }}').showModal()">+</button>
+        <dialog id="dlg-{{ item.id }}" class="item-dialog">
+          <button type="button" class="dialog-close" aria-label="Schließen"
+                  onclick="this.closest('dialog').close()">×</button>
+          <h3>{{ item.name }}</h3>
+          <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
+          <form class="add-form" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            {% for group in item.option_groups %}
+            <div class="option-choice">
+              <span class="tag">{{ group.name }}{{ " – Pflicht" if group.required else "" }}</span>
+              {% for option in group.options %}
+              <label class="checkbox-label">
+                <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
+                       name="opt_{{ group.id }}" value="{{ option.id }}">
+                {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
+              </label>
+              {% endfor %}
+            </div>
+            {% endfor %}
+            <div class="add-row">
+              <label class="qty-label">Menge <input type="number" name="qty" min="1" value="1"></label>
+              <button type="submit">In den Warenkorb</button>
+            </div>
+            <div id="feedback-{{ item.id }}" class="add-feedback-slot"></div>
+          </form>
+        </dialog>
+        {% else %}
+        <form class="add-form-instant" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <input type="hidden" name="qty" value="1">
+          <button type="submit" class="add-btn" aria-label="{{ item.name }} hinzufügen">+</button>
+        </form>
         <div id="feedback-{{ item.id }}" class="add-feedback-slot"></div>
-      </form>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
     {% else %}
@@ -69,16 +88,25 @@
 <script>
   (function () {
     var search = document.getElementById('menu-search');
-    if (!search) return;
-    search.addEventListener('input', function () {
-      var query = search.value.trim().toLowerCase();
-      document.querySelectorAll('.menu-card').forEach(function (card) {
-        card.classList.toggle('is-hidden', query.length > 0 && card.dataset.name.indexOf(query) === -1);
+    if (search) {
+      search.addEventListener('input', function () {
+        var query = search.value.trim().toLowerCase();
+        document.querySelectorAll('.menu-card').forEach(function (card) {
+          card.classList.toggle('is-hidden', query.length > 0 && card.dataset.name.indexOf(query) === -1);
+        });
+        document.querySelectorAll('.category').forEach(function (section) {
+          var visible = section.querySelectorAll('.menu-card:not(.is-hidden)').length > 0;
+          section.classList.toggle('is-hidden', query.length > 0 && !visible);
+        });
       });
-      document.querySelectorAll('.category').forEach(function (section) {
-        var visible = section.querySelectorAll('.menu-card:not(.is-hidden)').length > 0;
-        section.classList.toggle('is-hidden', query.length > 0 && !visible);
-      });
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      var target = evt.detail.target;
+      if (target && target.classList.contains('add-feedback-slot') && target.querySelector('.add-feedback.ok')) {
+        var dialog = target.closest('dialog');
+        if (dialog) setTimeout(function () { dialog.close(); }, 500);
+      }
     });
   })();
 </script>

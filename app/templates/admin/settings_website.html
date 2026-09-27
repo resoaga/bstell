@@ -43,6 +43,9 @@
     <label>Bewertung (Text, z.B. von Google)
       <input type="text" name="rating_text" value="{{ settings.rating_text }}" placeholder="z.B. 4.9 ★ (341 Bewertungen)">
     </label>
+    <label>Markenfarbe (für Buttons, Preise, Akzente)
+      <input type="color" name="accent_color" value="{{ settings.accent_color or '#c8102e' }}" style="max-width: 100px;">
+    </label>
     <button type="submit">Speichern</button>
   </form>
 </section>

@@ -387,6 +387,7 @@ async def update_website_settings(
     badge_2: str = Form(""),
     badge_3: str = Form(""),
     rating_text: str = Form(""),
+    accent_color: str = Form("#c8102e"),
     hero_image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -401,6 +402,7 @@ async def update_website_settings(
     settings.badge_2 = badge_2
     settings.badge_3 = badge_3
     settings.rating_text = rating_text
+    settings.accent_color = accent_color or "#c8102e"
     if hero_image is not None and hero_image.filename:
         settings.hero_image_filename = await save_uploaded_image(hero_image, "hero")
     db.commit()

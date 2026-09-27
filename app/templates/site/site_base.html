@@ -4,11 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ settings.name or "Jetzt bestellen" }}{% endblock %}</title>
+  <meta name="description" content="{{ settings.hero_subheadline or (settings.name ~ ' – online bestellen, Abholung oder Lieferung.') }}">
+  <meta property="og:title" content="{{ settings.name or 'Jetzt bestellen' }}">
+  <meta property="og:description" content="{{ settings.hero_subheadline or '' }}">
+  {% if settings.hero_image_filename %}<meta property="og:image" content="/static/uploads/{{ settings.hero_image_filename }}">{% endif %}
   <script src="/static/htmx.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  <style>:root { --accent: {{ settings.accent_color or "#c8102e" }}; }</style>
+  <script type="application/ld+json">{{ restaurant_schema_json | safe }}</script>
   {% block head_extra %}{% endblock %}
 </head>
 <body class="site">
@@ -26,13 +32,32 @@
     </nav>
   </header>
 
+  <div class="status-strip">
+    <span class="status-pill {{ 'is-open' if is_open else 'is-closed' }}">{{ "Geöffnet" if is_open else "Geschlossen" }}</span>
+    {% if settings.address_street %}
+    <span class="status-address">{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</span>
+    {% endif %}
+  </div>
+
+  {% if settings.badge_1 or settings.badge_2 or settings.badge_3 or settings.rating_text %}
+  <div class="trust-strip">
+    {% for badge in [settings.badge_1, settings.badge_2, settings.badge_3] %}
+    {% if badge %}<span class="trust-pill">{{ badge }}</span>{% endif %}
+    {% endfor %}
+    {% if settings.rating_text %}<span class="trust-pill trust-rating">{{ settings.rating_text }}</span>{% endif %}
+  </div>
+  {% endif %}
+
   {% if settings.promo_banner_enabled and settings.promo_banner_text %}
   <div class="promo-banner">{{ settings.promo_banner_text }}</div>
   {% endif %}
 
-  <main class="site-main">
-    {% block content %}{% endblock %}
-  </main>
+  <div class="site-shell">
+    <main class="site-main">
+      {% block content %}{% endblock %}
+    </main>
+    {% include "site/_cart_sidebar.html" %}
+  </div>
 
   <footer class="site-footer">
     <div class="site-footer-info">

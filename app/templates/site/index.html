@@ -5,22 +5,13 @@
     <h1>{{ settings.hero_headline or "Vom Grill auf deinen Teller" }}</h1>
     {% if settings.hero_subheadline %}<p class="hero-sub">{{ settings.hero_subheadline }}</p>{% endif %}
     <a class="btn-primary" href="/speisekarte">Jetzt bestellen</a>
-    {% if settings.rating_text %}<p class="hero-rating">{{ settings.rating_text }}</p>{% endif %}
   </div>
   {% if settings.hero_image_filename %}
   <div class="hero-photo">
-    <img src="/static/uploads/{{ settings.hero_image_filename }}" alt="{{ settings.name }}">
+    <img src="/static/uploads/{{ settings.hero_image_filename }}" alt="{{ settings.name }}" loading="lazy">
   </div>
   {% endif %}
 </section>
-
-{% if settings.badge_1 or settings.badge_2 or settings.badge_3 %}
-<section class="badge-row">
-  {% for badge in [settings.badge_1, settings.badge_2, settings.badge_3] %}
-  {% if badge %}<span class="badge-pill">{{ badge }}</span>{% endif %}
-  {% endfor %}
-</section>
-{% endif %}
 
 <section class="info-strip">
   {% if settings.pickup_enabled %}

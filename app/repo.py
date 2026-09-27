@@ -2,6 +2,8 @@
 fixed set of editable legal pages, shared between the admin and the
 public-facing site routers."""
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from .models import CONTENT_PAGE_DEFAULTS, ContentPage, OpeningHour, RestaurantSettings
@@ -12,6 +14,15 @@ def get_opening_hours_by_weekday(db: Session) -> dict:
     for hour in db.query(OpeningHour).order_by(OpeningHour.weekday, OpeningHour.open_time).all():
         by_day[hour.weekday].append(hour)
     return by_day
+
+
+def is_currently_open(hours_by_weekday: dict) -> bool:
+    now = datetime.now()
+    current_time = now.strftime("%H:%M")
+    for window in hours_by_weekday.get(now.weekday(), []):
+        if window.open_time <= current_time <= window.close_time:
+            return True
+    return False
 
 
 def get_settings(db: Session) -> RestaurantSettings:

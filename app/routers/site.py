@@ -1,7 +1,8 @@
+import json
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from .. import cart as cart_lib
 from ..contact_cookie import COOKIE_MAX_AGE, COOKIE_NAME, decode_contact, encode_contact
 from ..database import get_db
 from ..models import (
+    CONTENT_PAGE_DEFAULTS,
     ORDER_STATUS_LABELS,
     ORDER_TYPE_LABELS,
     WEEKDAY_LABELS,
@@ -24,19 +26,59 @@ from ..repo import (
     get_content_page,
     get_opening_hours_by_weekday,
     get_settings,
+    is_currently_open,
 )
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+ALLOWED_LEGAL_SLUGS = {slug for slug, _, _ in CONTENT_PAGE_DEFAULTS}
+
+_ISO_WEEKDAYS = [
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+]
+
+
+def _restaurant_schema_json(settings, hours_by_weekday: dict) -> str:
+    opening_hours = [
+        {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": f"https://schema.org/{_ISO_WEEKDAYS[weekday]}",
+            "opens": window.open_time,
+            "closes": window.close_time,
+        }
+        for weekday, windows in hours_by_weekday.items()
+        for window in windows
+    ]
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": settings.name or "",
+        "telephone": settings.phone or "",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": settings.address_street or "",
+            "postalCode": settings.address_zip or "",
+            "addressLocality": settings.address_city or "",
+            "addressCountry": "CH",
+        },
+        "openingHoursSpecification": opening_hours,
+    }
+    return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+
 
 def site_extra(request: Request, db: Session) -> dict:
     _, cart_total = cart_lib.resolve_cart_lines(request, db)
+    settings = get_settings(db)
+    hours_by_weekday = get_opening_hours_by_weekday(db)
     return {
-        "settings": get_settings(db),
+        "settings": settings,
         "cart_count": cart_lib.cart_item_count(request),
         "cart_total": cart_total,
         "legal_pages": get_all_content_pages(db),
+        "hours_by_weekday": hours_by_weekday,
+        "is_open": is_currently_open(hours_by_weekday),
+        "restaurant_schema_json": _restaurant_schema_json(settings, hours_by_weekday),
     }
 
 
@@ -46,7 +88,6 @@ def homepage(request: Request, db: Session = Depends(get_db)):
         "site/index.html",
         {
             "request": request,
-            "hours_by_weekday": get_opening_hours_by_weekday(db),
             "weekday_labels": WEEKDAY_LABELS,
             **site_extra(request, db),
         },
@@ -357,6 +398,8 @@ def track_order(
 
 @router.get("/rechtliches/{slug}")
 def legal_page(slug: str, request: Request, db: Session = Depends(get_db)):
+    if slug not in ALLOWED_LEGAL_SLUGS:
+        raise HTTPException(status_code=404)
     page = get_content_page(db, slug)
     paragraphs = [p.strip() for p in page.body.split("\n\n") if p.strip()]
     return templates.TemplateResponse(

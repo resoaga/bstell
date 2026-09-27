@@ -168,6 +168,7 @@ class RestaurantSettings(Base):
     delivery_zone_radius_km = Column(Float, default=0.0)
 
     logo_filename = Column(String, default="")
+    accent_color = Column(String, default="#c8102e")
 
     hero_headline = Column(String, default="")
     hero_subheadline = Column(String, default="")

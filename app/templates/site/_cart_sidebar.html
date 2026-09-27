@@ -1,0 +1,10 @@
+<aside id="cart-sidebar" class="cart-sidebar" hx-swap-oob="true">
+  <h2>Warenkorb</h2>
+  {% if cart_count > 0 %}
+  <p class="cart-sidebar-count">{{ cart_count }} Artikel</p>
+  <p class="cart-sidebar-total">CHF {{ "%.2f"|format(cart_total) }}</p>
+  <a class="btn-primary" href="/warenkorb">Zur Kasse</a>
+  {% else %}
+  <p class="cart-sidebar-empty">Dein Warenkorb ist leer.</p>
+  {% endif %}
+</aside>
