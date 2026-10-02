@@ -46,6 +46,9 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     sort_order = Column(Integer, default=0)
+    # Items of a promo category are featured in the homepage hero (and are
+    # still listed as a normal category in the menu).
+    is_promo = Column(Boolean, default=False, nullable=False)
 
     items = relationship(
         "MenuItem", back_populates="category", cascade="all, delete-orphan"
@@ -217,27 +220,6 @@ class RestaurantSettings(Base):
     send_order_confirmation = Column(Boolean, default=True)
 
 
-class Combo(Base):
-    """A manually-priced pairing of two menu items (e.g. Döner + Cola) shown
-    as a slide in the homepage hero when enabled. Dates are plain ISO strings
-    ("YYYY-MM-DD"), matching OpeningHour's string-time convention — empty
-    means no limit on that side."""
-
-    __tablename__ = "combos"
-
-    id = Column(Integer, primary_key=True)
-    item_a_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
-    item_b_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
-    combo_price = Column(Float, nullable=False)
-    enabled = Column(Boolean, default=False)
-    start_date = Column(String, default="")
-    end_date = Column(String, default="")
-    sort_order = Column(Integer, default=0)
-
-    item_a = relationship("MenuItem", foreign_keys=[item_a_id])
-    item_b = relationship("MenuItem", foreign_keys=[item_b_id])
-
-
 class ContentPage(Base):
     """Editable public-facing text (legal pages) with a fixed set of slugs
     seeded on first access, similar to RestaurantSettings' singleton row."""
@@ -254,6 +236,7 @@ CONTENT_PAGE_DEFAULTS = [
     ("datenschutz", "Datenschutz", ""),
     ("agb", "AGB", ""),
     ("widerruf", "Widerrufsrecht", ""),
+    ("impressum", "Impressum", ""),
 ]
 
 

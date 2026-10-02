@@ -1,29 +1,30 @@
 {% extends "site/site_base.html" %}
 {% block content %}
-{% if active_combos %}
-<section class="hero hero-combos" data-autorotate="{{ 'true' if active_combos|length > 1 else 'false' }}">
-  {% for combo in active_combos %}
-  <div class="combo-slide{{ ' is-active' if loop.first else '' }}">
-    <div class="combo-photos">
-      <div class="combo-photo">
-        {% if combo.item_a.image_filename %}
-        <img src="/static/uploads/{{ combo.item_a.image_filename }}" alt="{{ combo.item_a.name }}" loading="lazy">
-        {% else %}
-        <div class="menu-card-placeholder" aria-hidden="true"></div>
-        {% endif %}
-      </div>
-      <span class="combo-plus">+</span>
-      <div class="combo-photo">
-        {% if combo.item_b.image_filename %}
-        <img src="/static/uploads/{{ combo.item_b.image_filename }}" alt="{{ combo.item_b.name }}" loading="lazy">
-        {% else %}
-        <div class="menu-card-placeholder" aria-hidden="true"></div>
-        {% endif %}
-      </div>
+{% if promo_items %}
+<section class="hero hero-promo" data-autorotate="{{ 'true' if promo_items|length > 1 else 'false' }}">
+  {% for item in promo_items %}
+  <div class="promo-slide{{ ' is-active' if loop.first else '' }}">
+    {% if item.image_filename %}
+    <div class="promo-photo"><img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy" onerror="this.parentElement.remove()"></div>
+    {% endif %}
+    <div class="promo-text">
+      <span class="promo-label">Aktion</span>
+      <p class="hero-heading">{{ item.name }}</p>
+      {% if item.description %}<p class="hero-sub">{{ item.description }}</p>{% endif %}
+      <p class="promo-price">CHF {{ "%.2f"|format(item.price) }}</p>
+      {% if not settings.accepting_orders %}
+      <a class="btn-primary" href="#menu-top">Zur Speisekarte</a>
+      {% elif item.option_links %}
+      <button type="button" class="btn-primary" onclick="document.getElementById('dlg-{{ item.id }}').showModal()">Jetzt bestellen</button>
+      {% else %}
+      <form hx-post="/speisekarte/hinzufuegen" hx-target="#hero-feedback-{{ item.id }}" hx-swap="innerHTML">
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+        <input type="hidden" name="qty" value="1">
+        <button type="submit" class="btn-primary">Jetzt bestellen</button>
+      </form>
+      <div id="hero-feedback-{{ item.id }}" class="add-feedback-slot"></div>
+      {% endif %}
     </div>
-    <p class="combo-names">{{ combo.item_a.name }} + {{ combo.item_b.name }}</p>
-    <p class="combo-price">nur CHF {{ "%.2f"|format(combo.combo_price) }}</p>
-    <a class="btn-primary" href="#menu-top">Jetzt bestellen</a>
   </div>
   {% endfor %}
 </section>
@@ -177,9 +178,9 @@
       });
     }
 
-    var comboSection = document.querySelector('.hero-combos[data-autorotate="true"]');
-    if (comboSection) {
-      var slides = comboSection.querySelectorAll('.combo-slide');
+    var promoSection = document.querySelector('.hero-promo[data-autorotate="true"]');
+    if (promoSection) {
+      var slides = promoSection.querySelectorAll('.promo-slide');
       var current = 0;
       setInterval(function () {
         slides[current].classList.remove('is-active');

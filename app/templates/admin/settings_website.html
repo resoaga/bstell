@@ -50,43 +50,4 @@
   </form>
 </section>
 
-<section class="category">
-  <h2>Kombo-Angebote (max. {{ max_combos }})</h2>
-  <p class="hint">Ist mindestens eine Kombo aktiv, ersetzt sie den Hero-Text oben durch Foto+Foto+Preis. Bei mehreren aktiven Kombos wechselt die Startseite automatisch durch.</p>
-  {% for combo in combos %}
-  <div class="option-group">
-    <div class="option-group-header">
-      <strong>{{ combo.item_a.name }} + {{ combo.item_b.name }}</strong>
-      <span class="tag">CHF {{ "%.2f"|format(combo.combo_price) }} – {{ "aktiv" if combo.enabled else "aus" }}{% if combo.start_date or combo.end_date %}, {{ combo.start_date or "…" }}–{{ combo.end_date or "…" }}{% endif %}</span>
-    </div>
-    <form method="post" action="/admin/combos/{{ combo.id }}/toggle" class="inline">
-      <button type="submit">{{ "Deaktivieren" if combo.enabled else "Aktivieren" }}</button>
-    </form>
-    <form method="post" action="/admin/combos/{{ combo.id }}/delete" class="inline">
-      <button type="submit" class="danger">Löschen</button>
-    </form>
-  </div>
-  {% else %}
-  <p class="empty">Noch keine Kombos.</p>
-  {% endfor %}
-
-  {% if combos|length < max_combos %}
-  <form method="post" action="/admin/combos" class="inline-form">
-    <select name="item_a_id" required>
-      <option value="">Artikel A</option>
-      {% for item in all_items %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
-    </select>
-    <select name="item_b_id" required>
-      <option value="">Artikel B</option>
-      {% for item in all_items %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
-    </select>
-    <input type="number" step="0.05" min="0" name="combo_price" placeholder="Kombo-Preis CHF" required>
-    <label>Ab <input type="date" name="start_date"></label>
-    <label>Bis <input type="date" name="end_date"></label>
-    <button type="submit">Kombo hinzufügen</button>
-  </form>
-  {% else %}
-  <p class="hint">Maximal {{ max_combos }} Kombos erreicht.</p>
-  {% endif %}
-</section>
 {% endblock %}

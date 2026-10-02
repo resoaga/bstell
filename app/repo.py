@@ -6,7 +6,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from .models import CONTENT_PAGE_DEFAULTS, Combo, ContentPage, OpeningHour, RestaurantSettings
+from .models import CONTENT_PAGE_DEFAULTS, ContentPage, OpeningHour, RestaurantSettings
 
 
 def get_opening_hours_by_weekday(db: Session) -> dict:
@@ -33,22 +33,6 @@ def get_settings(db: Session) -> RestaurantSettings:
         db.commit()
         db.refresh(settings)
     return settings
-
-
-def get_active_combos(db: Session):
-    today = datetime.now().strftime("%Y-%m-%d")
-    combos = (
-        db.query(Combo)
-        .filter(Combo.enabled.is_(True))
-        .order_by(Combo.sort_order, Combo.id)
-        .all()
-    )
-    return [
-        combo
-        for combo in combos
-        if (not combo.start_date or combo.start_date <= today)
-        and (not combo.end_date or combo.end_date >= today)
-    ]
 
 
 def get_content_page(db: Session, slug: str) -> ContentPage:

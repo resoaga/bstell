@@ -73,11 +73,11 @@
       {% if settings.address_street %}{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}<br>{% endif %}
       {% if settings.phone %}Tel. {{ settings.phone }}{% endif %}
     </div>
-    <p class="site-footer-hours">
-      {% for weekday in range(7) %}
-      <span class="footer-hours-row">{{ weekday_labels[weekday] }}: {% if hours_by_weekday[weekday] %}{% for window in hours_by_weekday[weekday] %}{{ window.open_time }}–{{ window.close_time }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}geschlossen{% endif %}</span>
+    <ul class="site-footer-hours">
+      {% for label, hours in footer_hours %}
+      <li><span class="footer-day">{{ label }}</span> {{ hours }}</li>
       {% endfor %}
-    </p>
+    </ul>
     <nav class="site-footer-links">
       {% for page in legal_pages %}
       <a href="/rechtliches/{{ page.slug }}">{{ page.title }}</a>

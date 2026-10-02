@@ -23,7 +23,6 @@ from ..models import (
     OrderType,
 )
 from ..repo import (
-    get_active_combos,
     get_all_content_pages,
     get_content_page,
     get_opening_hours_by_weekday,
@@ -70,6 +69,30 @@ def _restaurant_schema_json(settings, hours_by_weekday: dict) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
 
 
+def footer_hours(hours_by_weekday: dict) -> list:
+    """Compact opening hours for the footer: Mon-Thu merged where identical,
+    Fri/Sat/Sun always on their own line. Returns [(label, text), ...]."""
+
+    def text(day: int) -> str:
+        windows = hours_by_weekday.get(day)
+        if not windows:
+            return "geschlossen"
+        return ", ".join(f"{w.open_time}–{w.close_time}" for w in windows)
+
+    rows = []
+    day = 0
+    while day <= 3:
+        end = day
+        while end < 3 and text(end + 1) == text(day):
+            end += 1
+        first, last = WEEKDAY_LABELS[day][:2], WEEKDAY_LABELS[end][:2]
+        rows.append((first if end == day else f"{first}–{last}", text(day)))
+        day = end + 1
+    for day in (4, 5, 6):
+        rows.append((WEEKDAY_LABELS[day][:2], text(day)))
+    return rows
+
+
 def site_extra(request: Request, db: Session) -> dict:
     _, cart_total = cart_lib.resolve_cart_lines(request, db)
     settings = get_settings(db)
@@ -80,6 +103,7 @@ def site_extra(request: Request, db: Session) -> dict:
         "cart_total": cart_total,
         "legal_pages": get_all_content_pages(db),
         "hours_by_weekday": hours_by_weekday,
+        "footer_hours": footer_hours(hours_by_weekday),
         "weekday_labels": WEEKDAY_LABELS,
         "is_open": is_currently_open(hours_by_weekday),
         "restaurant_schema_json": _restaurant_schema_json(settings, hours_by_weekday),
@@ -89,12 +113,19 @@ def site_extra(request: Request, db: Session) -> dict:
 @router.get("/")
 def homepage(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
+    promo_items = [
+        item
+        for category in categories
+        if category.is_promo
+        for item in category.items
+        if item.is_available
+    ][:5]
     return templates.TemplateResponse(
         "site/index.html",
         {
             "request": request,
             "categories": categories,
-            "active_combos": get_active_combos(db),
+            "promo_items": promo_items,
             **site_extra(request, db),
         },
     )

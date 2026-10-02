@@ -10,7 +10,10 @@
 {% for category in categories %}
 <section class="category">
   <div class="category-header">
-    <h2>{{ category.name }}</h2>
+    <h2>{{ category.name }}{% if category.is_promo %} <span class="tag">Aktion im Hero</span>{% endif %}</h2>
+    <form method="post" action="/admin/categories/{{ category.id }}/promo">
+      <button type="submit">{{ "Nicht mehr im Hero zeigen" if category.is_promo else "Im Hero zeigen (Aktion)" }}</button>
+    </form>
     <form method="post" action="/admin/categories/{{ category.id }}/delete"
           onsubmit="return confirm('Kategorie und alle Artikel darin löschen?')">
       <button type="submit" class="danger">Kategorie löschen</button>

@@ -306,7 +306,6 @@ body.site {
   font-family: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--paper);
   color: var(--ink);
-  padding-bottom: 76px; /* room for the fixed cart bar */
 }
 
 .text-link, .back-link { color: var(--accent); text-decoration: none; }
@@ -453,26 +452,40 @@ body.site .hero-photo {
 }
 body.site .hero-photo img { display: block; width: 100%; }
 
-body.site .hero-combos { display: block; }
-body.site .combo-slide { display: none; }
-body.site .combo-slide.is-active { display: block; animation: combo-fade 0.4s ease; }
-@keyframes combo-fade {
+body.site .hero-promo { display: block; }
+body.site .promo-slide { display: none; }
+body.site .promo-slide.is-active { display: flex; flex-direction: column; gap: 18px; animation: promo-fade 0.4s ease; }
+@keyframes promo-fade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-body.site .combo-photos { display: flex; align-items: center; gap: 12px; }
-body.site .combo-photo {
-  width: 72px;
-  height: 72px;
-  border-radius: 10px;
+body.site .promo-photo {
+  border-radius: 14px;
   overflow: hidden;
   background: var(--paper);
-  flex: none;
+  box-shadow: 0 8px 20px rgba(120, 70, 10, 0.25);
 }
-body.site .combo-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-body.site .combo-plus { font-size: 22px; font-weight: 800; color: var(--ink); }
-body.site .combo-names { margin: 14px 0 2px; font-weight: 700; font-size: 16px; color: var(--ink); }
-body.site .combo-price { margin: 0 0 18px; font-size: 24px; font-weight: 800; color: var(--accent); }
+body.site .promo-photo img { display: block; width: 100%; max-height: 220px; object-fit: cover; }
+body.site .promo-label {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 3px 9px;
+  margin-bottom: 10px;
+}
+body.site .promo-text .hero-heading {
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 0 10px;
+}
+body.site .promo-price { margin: 0 0 16px; font-size: 26px; font-weight: 800; color: var(--accent); }
 
 body.site .btn-primary {
   display: inline-block;
@@ -480,6 +493,9 @@ body.site .btn-primary {
   color: #fff;
   text-decoration: none;
   font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
   border-radius: 8px;
   padding: 13px 22px;
   font-size: 15px;
@@ -541,8 +557,8 @@ body.site .category-pills {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
-  margin-bottom: 22px;
+  padding-bottom: 12px; /* keeps the horizontal scrollbar off the pills */
+  margin-bottom: 14px;
 }
 body.site .category-pill {
   flex: none;
@@ -708,6 +724,7 @@ body.site .add-feedback.error { color: #c0392b; }
 body.site .cart-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; }
 body.site .cart-bar-link {
   display: block;
+  line-height: 22px; /* 22 + 2*14 padding = 50px, keep in sync with the body padding below */
   background: var(--accent);
   color: #fff;
   text-align: center;
@@ -717,6 +734,11 @@ body.site .cart-bar-link {
   font-weight: 700;
 }
 body.site .cart-bar-link:active { opacity: 0.9; }
+/* Room for the fixed bar only while it is actually shown, so the footer
+   sits flush on it instead of leaving a gap. */
+@media (max-width: 899px) {
+  body.site:has(.cart-bar-link) { padding-bottom: 50px; }
+}
 
 /* ---- Cart / Kasse ---- */
 body.site .cart-list { list-style: none; padding: 0; margin: 0 0 14px; }
@@ -735,24 +757,27 @@ body.site .type-label { font-size: 13px; color: #6b6b6b; margin-left: 6px; }
 
 /* ---- Footer ---- */
 body.site .site-footer {
-  background: var(--ink);
-  color: #cfc7bd;
-  padding: 22px 18px;
+  background: #5c0a18; /* fallback */
+  background: color-mix(in srgb, var(--accent) 55%, #000); /* deep shade of the brand colour */
+  color: #f1dede;
+  padding: 18px 18px 16px;
   margin-top: 28px;
   font-size: 13px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 14px;
+  gap: 10px;
 }
-body.site .site-footer strong { color: #fdfbf8; font-size: 16px; }
-body.site .site-footer-logo { max-height: 40px; display: block; }
-body.site .site-footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
-body.site .site-footer-links a { color: var(--accent); text-decoration: none; }
-body.site .site-footer-links a:hover, body.site .site-footer-links a:active { color: #fff; }
-body.site .site-footer-hours { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 12px; color: #a89f92; }
-body.site .site-footer-credit { margin: 0; font-size: 12px; color: #a89f92; }
+body.site .site-footer strong { color: #fff; font-size: 16px; }
+body.site .site-footer-logo { max-height: 36px; display: block; }
+body.site .site-footer-info { line-height: 1.5; }
+body.site .site-footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; }
+body.site .site-footer-links a { color: #fff; text-decoration: none; font-weight: 600; }
+body.site .site-footer-links a:hover, body.site .site-footer-links a:active { text-decoration: underline; }
+body.site .site-footer-hours { list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 1.55; color: #e6c9c9; }
+body.site .footer-day { display: inline-block; min-width: 38px; font-weight: 700; color: #fff; text-align: right; margin-right: 4px; }
+body.site .site-footer-credit { margin: 0; font-size: 11px; color: #c9a3a3; }
 body.site .footer-credit-placeholder { font-style: italic; }
 
 @media (min-width: 640px) {
@@ -760,6 +785,9 @@ body.site .footer-credit-placeholder { font-style: italic; }
   body.site .status-strip, body.site .trust-strip { padding-left: 26px; padding-right: 26px; }
   body.site .hero { flex-direction: row; align-items: center; justify-content: space-between; padding: 44px 40px; }
   body.site .hero-copy .hero-heading { font-size: 36px; }
+  body.site .promo-slide.is-active { flex-direction: row; align-items: center; gap: 36px; }
+  body.site .promo-photo { flex: 0 0 42%; }
+  body.site .promo-text .hero-heading { font-size: 36px; }
   body.site .site-footer { padding: 26px; }
   body.site .cart-line { flex-direction: row; align-items: center; justify-content: space-between; }
   body.site .menu-grid { grid-template-columns: repeat(2, 1fr); }

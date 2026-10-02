@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 
 echo "== DB-Migrationen =="
 python3 scripts/migrate_option_library.py || true
+python3 scripts/add_category_promo.py || true
 python3 scripts/upgrade_sauce.py || true
 
 echo "== Neustart =="
