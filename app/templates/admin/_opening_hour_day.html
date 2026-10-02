@@ -7,14 +7,16 @@
     {% for window in windows %}
     <li>
       {{ window.open_time }} – {{ window.close_time }}
-      <form hx-post="/admin/settings/hours/windows/{{ window.id }}/delete" hx-target="#opening-hour-day-{{ weekday }}"
+      <form method="post" action="/admin/settings/hours/windows/{{ window.id }}/delete"
+            hx-post="/admin/settings/hours/windows/{{ window.id }}/delete" hx-target="#opening-hour-day-{{ weekday }}"
             hx-swap="outerHTML" class="inline">
         <button type="submit" class="danger small">×</button>
       </form>
     </li>
     {% endfor %}
   </ul>
-  <form hx-post="/admin/settings/hours/{{ weekday }}/windows" hx-target="#opening-hour-day-{{ weekday }}"
+  <form method="post" action="/admin/settings/hours/{{ weekday }}/windows"
+        hx-post="/admin/settings/hours/{{ weekday }}/windows" hx-target="#opening-hour-day-{{ weekday }}"
         hx-swap="outerHTML" class="inline-form opening-hour-add-form">
     <div class="opening-hour-times">
       <input type="time" name="open_time" value="11:00">

@@ -756,8 +756,12 @@ def add_opening_hour_window(
     close_time: str = Form("22:00"),
     db: Session = Depends(get_db),
 ):
+    if weekday not in WEEKDAY_LABELS:
+        raise HTTPException(status_code=404, detail="Wochentag nicht gefunden")
     db.add(OpeningHour(weekday=weekday, open_time=open_time, close_time=close_time))
     db.commit()
+    if "hx-request" not in request.headers:  # plain form post (htmx not running)
+        return RedirectResponse(url="/admin/settings/hours", status_code=303)
     return templates.TemplateResponse(
         "admin/_opening_hour_day.html",
         {
@@ -777,6 +781,8 @@ def delete_opening_hour_window(window_id: int, request: Request, db: Session = D
     weekday = window.weekday
     db.delete(window)
     db.commit()
+    if "hx-request" not in request.headers:  # plain form post (htmx not running)
+        return RedirectResponse(url="/admin/settings/hours", status_code=303)
     return templates.TemplateResponse(
         "admin/_opening_hour_day.html",
         {
