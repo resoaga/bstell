@@ -66,31 +66,51 @@ class MenuItem(Base):
     image_filename = Column(String, default="")
 
     category = relationship("Category", back_populates="items")
-    option_groups = relationship(
-        "OptionGroup",
+    option_links = relationship(
+        "ItemOptionGroup",
         back_populates="menu_item",
         cascade="all, delete-orphan",
-        order_by="OptionGroup.id",
+        order_by="ItemOptionGroup.sort_order, ItemOptionGroup.id",
     )
 
 
 class OptionGroup(Base):
+    """Library entry: defined once (name, single/multiple, options + prices) and
+    then assigned to any number of menu items via ItemOptionGroup."""
+
     __tablename__ = "option_groups"
 
     id = Column(Integer, primary_key=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
     name = Column(String, nullable=False)
     selection_type = Column(Enum(SelectionType), default=SelectionType.single)
-    required = Column(Boolean, default=False)
-    max_selections = Column(Integer, nullable=True)
 
-    menu_item = relationship("MenuItem", back_populates="option_groups")
     options = relationship(
         "Option",
         back_populates="option_group",
         cascade="all, delete-orphan",
         order_by="Option.id",
     )
+    links = relationship(
+        "ItemOptionGroup", back_populates="option_group", cascade="all, delete-orphan"
+    )
+
+
+class ItemOptionGroup(Base):
+    """Assignment of a library group to one item. Whether the group is mandatory
+    (and how many options may be picked) is decided per assignment, so the same
+    group can be required on one item and optional on another."""
+
+    __tablename__ = "item_option_groups"
+
+    id = Column(Integer, primary_key=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
+    option_group_id = Column(Integer, ForeignKey("option_groups.id"), nullable=False)
+    required = Column(Boolean, default=False, nullable=False)
+    max_selections = Column(Integer, nullable=True)
+    sort_order = Column(Integer, default=0)
+
+    menu_item = relationship("MenuItem", back_populates="option_links")
+    option_group = relationship("OptionGroup", back_populates="links")
 
 
 class Option(Base):

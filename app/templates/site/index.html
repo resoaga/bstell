@@ -75,8 +75,8 @@
   <h1>{{ category.name }}</h1>
   <div class="menu-grid">
     {% for item in category.items if item.is_available %}
-    {% set required_groups = item.option_groups | selectattr("required") | list %}
-    {% set extra_groups = item.option_groups | rejectattr("required") | list %}
+    {% set required_links = item.option_links | selectattr("required") | list %}
+    {% set extra_links = item.option_links | rejectattr("required") | list %}
     <div class="menu-card" data-name="{{ item.name|lower }}">
       <div class="menu-card-media">
         {% if item.image_filename %}
@@ -93,7 +93,7 @@
       </div>
       {% if settings.accepting_orders %}
       <div class="menu-card-action">
-        {% if item.option_groups %}
+        {% if item.option_links %}
         <button type="button" class="add-btn" aria-label="{{ item.name }} auswählen"
                 onclick="document.getElementById('dlg-{{ item.id }}').showModal()">+</button>
         <dialog id="dlg-{{ item.id }}" class="item-dialog">
@@ -103,30 +103,30 @@
           <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
           <form class="add-form" hx-post="/speisekarte/hinzufuegen" hx-target="#feedback-{{ item.id }}" hx-swap="innerHTML">
             <input type="hidden" name="item_id" value="{{ item.id }}">
-            {% for group in required_groups %}
+            {% for link in required_links %}{% set group = link.option_group %}
             <div class="option-choice">
-              <span class="tag">{{ group.name }} – Pflicht{{ " (max. %d)"|format(group.max_selections) if group.max_selections else "" }}</span>
+              <span class="tag">{{ group.name }} – Pflicht{{ " (max. %d)"|format(link.max_selections) if link.max_selections else "" }}</span>
               {% for option in group.options %}
               <label class="checkbox-label">
                 <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
                        name="opt_{{ group.id }}" value="{{ option.id }}"
-                       {% if group.max_selections %}data-group="{{ group.id }}" data-group-max="{{ group.max_selections }}"{% endif %}>
+                       {% if link.max_selections %}data-group="{{ group.id }}" data-group-max="{{ link.max_selections }}"{% endif %}>
                 {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
               </label>
               {% endfor %}
             </div>
             {% endfor %}
-            {% if extra_groups %}
+            {% if extra_links %}
             <div class="option-extras">
               <span class="tag extras-tag">Extras</span>
-              {% for group in extra_groups %}
+              {% for link in extra_links %}{% set group = link.option_group %}
               <div class="option-choice">
                 <span class="tag">{{ group.name }}</span>
                 {% for option in group.options %}
                 <label class="checkbox-label">
                   <input type="{{ 'radio' if group.selection_type.value == 'single' else 'checkbox' }}"
                          name="opt_{{ group.id }}" value="{{ option.id }}"
-                         {% if group.max_selections %}data-group="{{ group.id }}" data-group-max="{{ group.max_selections }}"{% endif %}>
+                         {% if link.max_selections %}data-group="{{ group.id }}" data-group-max="{{ link.max_selections }}"{% endif %}>
                   {{ option.name }}{{ " (+%.2f CHF)"|format(option.price_delta) if option.price_delta else "" }}
                 </label>
                 {% endfor %}

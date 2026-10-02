@@ -1,7 +1,7 @@
 import os
 import secrets
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -15,6 +15,7 @@ from ..models import (
     WEEKDAY_LABELS,
     Category,
     Combo,
+    ItemOptionGroup,
     MenuItem,
     OpeningHour,
     Option,
@@ -166,7 +167,13 @@ def edit_item_form(item_id: int, request: Request, db: Session = Depends(get_db)
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
     return templates.TemplateResponse(
         "admin/item_form.html",
-        {"request": request, "categories": categories, "item": item, "preselected_category_id": None},
+        {
+            "request": request,
+            "categories": categories,
+            "item": item,
+            "preselected_category_id": None,
+            "library": db.query(OptionGroup).order_by(OptionGroup.name).all(),
+        },
     )
 
 
@@ -227,46 +234,122 @@ def toggle_new(item_id: int, request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/items/{item_id}/option-groups", dependencies=mutating)
-def add_option_group(
-    item_id: int,
-    request: Request,
+def _item_links_response(request: Request, db: Session, item_id: int):
+    item = db.get(MenuItem, item_id)
+    return templates.TemplateResponse(
+        "admin/_item_option_links.html",
+        {
+            "request": request,
+            "item": item,
+            "library": db.query(OptionGroup).order_by(OptionGroup.name).all(),
+        },
+    )
+
+
+def _clean_max(selection_type: SelectionType, max_selections: Optional[int]) -> Optional[int]:
+    if selection_type == SelectionType.multiple and max_selections and max_selections > 0:
+        return max_selections
+    return None
+
+
+@router.get("/option-groups")
+def option_library(request: Request, db: Session = Depends(get_db)):
+    groups = db.query(OptionGroup).order_by(OptionGroup.name).all()
+    return templates.TemplateResponse(
+        "admin/option_library.html", {"request": request, "groups": groups}
+    )
+
+
+@router.post("/option-groups", dependencies=mutating)
+def create_option_group(
     name: str = Form(...),
     selection_type: SelectionType = Form(SelectionType.single),
+    db: Session = Depends(get_db),
+):
+    group = OptionGroup(name=name.strip(), selection_type=selection_type)
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return RedirectResponse(url=f"/admin/option-groups/{group.id}", status_code=303)
+
+
+@router.get("/option-groups/{group_id}")
+def option_group_page(group_id: int, request: Request, db: Session = Depends(get_db)):
+    group = db.get(OptionGroup, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Optionsgruppe nicht gefunden")
+    categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
+    links_by_item = {link.menu_item_id: link for link in group.links}
+    return templates.TemplateResponse(
+        "admin/option_group_page.html",
+        {
+            "request": request,
+            "group": group,
+            "categories": categories,
+            "links_by_item": links_by_item,
+        },
+    )
+
+
+@router.post("/option-groups/{group_id}/rename", dependencies=mutating)
+def rename_option_group(
+    group_id: int,
+    name: str = Form(...),
+    selection_type: SelectionType = Form(SelectionType.single),
+    db: Session = Depends(get_db),
+):
+    group = db.get(OptionGroup, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Optionsgruppe nicht gefunden")
+    group.name = name.strip()
+    group.selection_type = selection_type
+    if selection_type == SelectionType.single:
+        for link in group.links:
+            link.max_selections = None
+    db.commit()
+    return RedirectResponse(url=f"/admin/option-groups/{group_id}", status_code=303)
+
+
+@router.post("/option-groups/{group_id}/delete", dependencies=mutating)
+def delete_option_group(group_id: int, db: Session = Depends(get_db)):
+    group = db.get(OptionGroup, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Optionsgruppe nicht gefunden")
+    db.delete(group)
+    db.commit()
+    return RedirectResponse(url="/admin/option-groups", status_code=303)
+
+
+@router.post("/option-groups/{group_id}/assign", dependencies=mutating)
+def assign_option_group(
+    group_id: int,
+    item_ids: List[int] = Form([]),
     required: bool = Form(False),
     max_selections: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
-    item = db.get(MenuItem, item_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
-    db.add(
-        OptionGroup(
-            menu_item_id=item_id,
-            name=name,
-            selection_type=selection_type,
-            required=required,
-            max_selections=max_selections if selection_type == SelectionType.multiple else None,
-        )
-    )
-    db.commit()
-    return templates.TemplateResponse(
-        "admin/_option_groups.html", {"request": request, "item": item}
-    )
-
-
-@router.post("/option-groups/{group_id}/delete", dependencies=mutating)
-def delete_option_group(group_id: int, request: Request, db: Session = Depends(get_db)):
+    """Bulk assignment: the checked items get this group (existing links are
+    updated); unchecked items lose it."""
     group = db.get(OptionGroup, group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Optionsgruppe nicht gefunden")
-    item_id = group.menu_item_id
-    db.delete(group)
+    wanted = set(item_ids)
+    existing = {link.menu_item_id: link for link in group.links}
+    max_value = _clean_max(group.selection_type, max_selections)
+    for link in list(group.links):
+        if link.menu_item_id not in wanted:
+            db.delete(link)
+    for item_id in wanted:
+        if db.get(MenuItem, item_id) is None:
+            continue
+        link = existing.get(item_id)
+        if link is None:
+            link = ItemOptionGroup(menu_item_id=item_id, option_group_id=group_id)
+            db.add(link)
+        link.required = required
+        link.max_selections = max_value
     db.commit()
-    item = db.get(MenuItem, item_id)
-    return templates.TemplateResponse(
-        "admin/_option_groups.html", {"request": request, "item": item}
-    )
+    return RedirectResponse(url=f"/admin/option-groups/{group_id}", status_code=303)
 
 
 @router.post("/option-groups/{group_id}/options", dependencies=mutating)
@@ -299,6 +382,60 @@ def delete_option(option_id: int, request: Request, db: Session = Depends(get_db
     return templates.TemplateResponse(
         "admin/_option_group.html", {"request": request, "group": group}
     )
+
+
+@router.post("/items/{item_id}/option-links", dependencies=mutating)
+def add_item_option_link(
+    item_id: int,
+    request: Request,
+    option_group_id: int = Form(...),
+    required: bool = Form(False),
+    max_selections: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    item = db.get(MenuItem, item_id)
+    group = db.get(OptionGroup, option_group_id)
+    if item is None or group is None:
+        raise HTTPException(status_code=404, detail="Artikel oder Optionsgruppe nicht gefunden")
+    if not any(link.option_group_id == option_group_id for link in item.option_links):
+        db.add(
+            ItemOptionGroup(
+                menu_item_id=item_id,
+                option_group_id=option_group_id,
+                required=required,
+                max_selections=_clean_max(group.selection_type, max_selections),
+            )
+        )
+        db.commit()
+    return _item_links_response(request, db, item_id)
+
+
+@router.post("/option-links/{link_id}/update", dependencies=mutating)
+def update_item_option_link(
+    link_id: int,
+    request: Request,
+    required: bool = Form(False),
+    max_selections: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    link = db.get(ItemOptionGroup, link_id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Zuweisung nicht gefunden")
+    link.required = required
+    link.max_selections = _clean_max(link.option_group.selection_type, max_selections)
+    db.commit()
+    return _item_links_response(request, db, link.menu_item_id)
+
+
+@router.post("/option-links/{link_id}/delete", dependencies=mutating)
+def delete_item_option_link(link_id: int, request: Request, db: Session = Depends(get_db)):
+    link = db.get(ItemOptionGroup, link_id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Zuweisung nicht gefunden")
+    item_id = link.menu_item_id
+    db.delete(link)
+    db.commit()
+    return _item_links_response(request, db, item_id)
 
 
 @router.get("/orders")

@@ -132,14 +132,15 @@ async def add_to_cart(request: Request, db: Session = Depends(get_db)):
     quantity = max(1, quantity)
 
     option_ids = []
-    for group in item.option_groups:
+    for link in item.option_links:
+        group = link.option_group
         field_name = f"opt_{group.id}"
         if group.selection_type.value == "single":
             value = form.get(field_name)
             selected = [value] if value else []
         else:
             selected = form.getlist(field_name)
-        if group.required and not selected:
+        if link.required and not selected:
             return templates.TemplateResponse(
                 "site/_add_result.html",
                 {
@@ -148,12 +149,12 @@ async def add_to_cart(request: Request, db: Session = Depends(get_db)):
                     **site_extra(request, db),
                 },
             )
-        if group.max_selections and len(selected) > group.max_selections:
+        if link.max_selections and len(selected) > link.max_selections:
             return templates.TemplateResponse(
                 "site/_add_result.html",
                 {
                     "request": request,
-                    "error": f'Bei "{group.name}" sind maximal {group.max_selections} Auswahlen möglich.',
+                    "error": f'Bei "{group.name}" sind maximal {link.max_selections} Auswahlen möglich.',
                     **site_extra(request, db),
                 },
             )

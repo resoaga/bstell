@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Optionsgruppen</h2>
+<p class="hint">Einmal anlegen (z.B. "Sauce", "Extra-Zutaten"), dann beliebigen Artikeln zuweisen. Preise und Namen ändern sich überall gleichzeitig.</p>
+
+{% for group in groups %}
+<div class="option-group">
+  <div class="option-group-header">
+    <a href="/admin/option-groups/{{ group.id }}"><strong>{{ group.name }}</strong></a>
+    <span class="tag">{{ "Einzelauswahl" if group.selection_type.value == "single" else "Mehrfachauswahl" }} · {{ group.options|length }} Optionen · bei {{ group.links|length }} Artikeln</span>
+  </div>
+</div>
+{% else %}
+<p class="empty">Noch keine Optionsgruppen.</p>
+{% endfor %}
+
+<h3>Neue Gruppe</h3>
+<form method="post" action="/admin/option-groups" class="inline-form">
+  <input type="text" name="name" placeholder="z.B. Sauce" required>
+  <select name="selection_type">
+    <option value="single">Einzelauswahl</option>
+    <option value="multiple">Mehrfachauswahl</option>
+  </select>
+  <button type="submit">Anlegen</button>
+</form>
+{% endblock %}

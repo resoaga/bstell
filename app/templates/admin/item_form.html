@@ -33,22 +33,8 @@
 
 {% if item %}
 <h3>Optionen (z.B. Fleischsorte, Zutaten, Soße)</h3>
-<div id="option-groups">
-  {% include "admin/_option_groups.html" %}
-</div>
-
-<form hx-post="/admin/items/{{ item.id }}/option-groups" hx-target="#option-groups" hx-swap="innerHTML"
-      class="inline-form">
-  <input type="text" name="name" placeholder="z.B. Fleischsorte" required>
-  <select name="selection_type">
-    <option value="single">Einzelauswahl</option>
-    <option value="multiple">Mehrfachauswahl</option>
-  </select>
-  <input type="number" name="max_selections" placeholder="Max. Auswahl (optional)" min="1">
-  <label class="checkbox-label"><input type="checkbox" name="required" value="true"> Pflicht</label>
-  <button type="submit">Optionsgruppe hinzufügen</button>
-</form>
-<p class="hint">Tipp: eine nicht-pflichtige Gruppe (z.B. "Extra Sauce") wird auf der Webseite automatisch im eigenen "Extras"-Abschnitt am Ende des Bestell-Popups angezeigt.</p>
+{% include "admin/_item_option_links.html" %}
+<p class="hint">Gruppen werden einmal unter <a href="/admin/option-groups">Optionen</a> angelegt und hier nur zugewiesen. Pflicht und Max. Auswahl gelten nur für diesen Artikel. Nicht-pflichtige Gruppen erscheinen auf der Webseite im "Extras"-Abschnitt.</p>
 {% else %}
 <p class="hint">Optionen (Varianten/Zutaten) können erst hinzugefügt werden, nachdem der Artikel gespeichert wurde.</p>
 {% endif %}

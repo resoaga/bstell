@@ -322,8 +322,8 @@ body.site h1, body.site h2, body.site .page-title {
 body.site .page-title { font-size: 22px; }
 
 body.site .site-header {
-  background: var(--ink);
-  color: #fdfbf8;
+  background: var(--accent);
+  color: #fff;
   padding: 14px 18px;
   display: flex;
   flex-wrap: wrap;
@@ -332,15 +332,15 @@ body.site .site-header {
   gap: 10px;
 }
 body.site .site-logo {
-  color: #fdfbf8;
+  color: #fff;
   text-decoration: none;
   font-weight: 800;
   font-size: 18px;
 }
 body.site .site-logo img { max-height: 32px; display: block; }
 body.site .site-nav { display: flex; gap: 16px; flex-wrap: wrap; }
-body.site .site-nav a { color: #cfc7bd; text-decoration: none; font-size: 14px; font-weight: 500; }
-body.site .site-nav a:hover, body.site .site-nav a:active { color: var(--accent); }
+body.site .site-nav a { color: rgba(255, 255, 255, 0.88); text-decoration: none; font-size: 14px; font-weight: 600; }
+body.site .site-nav a:hover, body.site .site-nav a:active { color: #fff; text-decoration: underline; }
 
 /* ---- Status + trust strips (site-wide, right under the header) ---- */
 body.site .status-strip {
@@ -427,8 +427,8 @@ body.site .cart-sidebar { display: none; }
 
 /* ---- Hero ---- */
 body.site .hero {
-  background: var(--ink);
-  color: #f3ede4;
+  background: #ffe9c2; /* warm cream-yellow: appetite colour, readable dark text */
+  color: var(--ink);
   padding: 32px 20px;
   margin-bottom: 0;
   display: flex;
@@ -437,19 +437,19 @@ body.site .hero {
 }
 body.site .hero-copy { max-width: 34ch; }
 body.site .hero-copy .hero-heading {
-  color: #fdfbf8;
+  color: var(--ink);
   font-size: 30px;
   font-weight: 800;
   line-height: 1.15;
   margin: 0 0 12px;
 }
-body.site .hero-sub { margin: 0 0 20px; font-size: 15px; color: #d3c8b8; }
+body.site .hero-sub { margin: 0 0 20px; font-size: 15px; color: #5c4a35; }
 body.site .hero-photo {
   align-self: flex-start;
   border-radius: 14px;
   overflow: hidden;
   max-width: 220px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 20px rgba(120, 70, 10, 0.25);
 }
 body.site .hero-photo img { display: block; width: 100%; }
 
@@ -470,8 +470,8 @@ body.site .combo-photo {
   flex: none;
 }
 body.site .combo-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-body.site .combo-plus { font-size: 22px; font-weight: 800; color: #fdfbf8; }
-body.site .combo-names { margin: 14px 0 2px; font-weight: 700; font-size: 16px; color: #fdfbf8; }
+body.site .combo-plus { font-size: 22px; font-weight: 800; color: var(--ink); }
+body.site .combo-names { margin: 14px 0 2px; font-weight: 700; font-size: 16px; color: var(--ink); }
 body.site .combo-price { margin: 0 0 18px; font-size: 24px; font-weight: 800; color: var(--accent); }
 
 body.site .btn-primary {

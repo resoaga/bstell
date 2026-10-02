@@ -67,8 +67,8 @@ def resolve_cart_lines(request: Request, db: Session):
         option_ids = set(line.get("option_ids", []))
         selected_options = []
         unit_price = item.price
-        for group in item.option_groups:
-            for option in group.options:
+        for link in item.option_links:
+            for option in link.option_group.options:
                 if option.id in option_ids:
                     selected_options.append(option)
                     unit_price += option.price_delta
