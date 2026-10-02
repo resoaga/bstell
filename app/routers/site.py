@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from .. import cart as cart_lib
 from ..contact_cookie import COOKIE_MAX_AGE, COOKIE_NAME, decode_contact, encode_contact
+from ..assets import css_version
 from ..database import get_db
 from ..models import (
     CONTENT_PAGE_DEFAULTS,
@@ -32,6 +33,7 @@ from ..repo import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["css_version"] = css_version
 
 ALLOWED_LEGAL_SLUGS = {slug for slug, _, _ in CONTENT_PAGE_DEFAULTS}
 

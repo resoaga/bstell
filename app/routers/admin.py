@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..auth import require_admin, verify_same_origin
+from ..assets import css_version
 from ..database import get_db
 from ..models import (
     ORDER_STATUS_LABELS,
@@ -62,6 +63,7 @@ async def save_uploaded_image(upload: UploadFile, prefix: str) -> str:
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["css_version"] = css_version
 mutating = [Depends(verify_same_origin)]
 
 ORDER_NEXT_STATUS = {
