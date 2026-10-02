@@ -78,6 +78,7 @@
       <li><span class="footer-day">{{ label }}</span> {{ hours }}</li>
       {% endfor %}
     </ul>
+    {% if settings.hours_note %}<p class="site-footer-note">{{ settings.hours_note }}</p>{% endif %}
     <nav class="site-footer-links">
       {% for page in legal_pages %}
       <a href="/rechtliches/{{ page.slug }}">{{ page.title }}</a>

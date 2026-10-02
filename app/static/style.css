@@ -776,6 +776,7 @@ body.site .site-footer-links { display: flex; flex-wrap: wrap; justify-content: 
 body.site .site-footer-links a { color: #fff; text-decoration: none; font-weight: 600; }
 body.site .site-footer-links a:hover, body.site .site-footer-links a:active { text-decoration: underline; }
 body.site .site-footer-hours { list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 1.55; color: #e6c9c9; }
+body.site .site-footer-note { margin: -4px 0 0; font-size: 12px; font-style: italic; color: #f1dede; }
 body.site .footer-day { display: inline-block; min-width: 38px; font-weight: 700; color: #fff; text-align: right; margin-right: 4px; }
 body.site .site-footer-credit { margin: 0; font-size: 11px; color: #c9a3a3; }
 body.site .footer-credit-placeholder { font-style: italic; }

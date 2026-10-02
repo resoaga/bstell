@@ -740,6 +740,14 @@ def settings_hours(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/settings/hours-note", dependencies=mutating)
+def update_hours_note(hours_note: str = Form(""), db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    settings.hours_note = hours_note.strip()
+    db.commit()
+    return RedirectResponse(url="/admin/settings/hours", status_code=303)
+
+
 @router.post("/settings/hours/{weekday}/windows", dependencies=mutating)
 def add_opening_hour_window(
     weekday: int,

@@ -12,4 +12,15 @@
   {% endwith %}
   {% endfor %}
 </section>
+
+<section class="category">
+  <h2>Hinweis zu den Öffnungszeiten</h2>
+  <p class="hint">Kurzer Text, der auf der Webseite unter den Öffnungszeiten im Footer steht, z.B. "An verkaufsoffenen Sonntagen geöffnet". Leer lassen = kein Hinweis.</p>
+  <form method="post" action="/admin/settings/hours-note">
+    <label>Hinweis
+      <input type="text" name="hours_note" maxlength="140" value="{{ settings.hours_note or '' }}">
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
 {% endblock %}

@@ -179,6 +179,7 @@ class RestaurantSettings(Base):
     address_street = Column(String, default="")
     address_zip = Column(String, default="")
     address_city = Column(String, default="")
+    hours_note = Column(String, default="")  # free text under the opening hours (e.g. special days)
     phone = Column(String, default="")
     email = Column(String, default="")
 
