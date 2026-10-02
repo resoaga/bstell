@@ -70,8 +70,8 @@ def _restaurant_schema_json(settings, hours_by_weekday: dict) -> str:
 
 
 def footer_hours(hours_by_weekday: dict) -> list:
-    """Compact opening hours for the footer: Mon-Thu merged where identical,
-    Fri/Sat/Sun always on their own line. Returns [(label, text), ...]."""
+    """Compact opening hours for the footer: consecutive days with identical
+    hours share one line (Mo–Fr, Sa, So). Returns [(label, text), ...]."""
 
     def text(day: int) -> str:
         windows = hours_by_weekday.get(day)
@@ -81,15 +81,13 @@ def footer_hours(hours_by_weekday: dict) -> list:
 
     rows = []
     day = 0
-    while day <= 3:
+    while day <= 6:
         end = day
-        while end < 3 and text(end + 1) == text(day):
+        while end < 6 and text(end + 1) == text(day):
             end += 1
         first, last = WEEKDAY_LABELS[day][:2], WEEKDAY_LABELS[end][:2]
         rows.append((first if end == day else f"{first}–{last}", text(day)))
         day = end + 1
-    for day in (4, 5, 6):
-        rows.append((WEEKDAY_LABELS[day][:2], text(day)))
     return rows
 
 
