@@ -306,6 +306,11 @@ body.site {
   font-family: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--paper);
   color: var(--ink);
+  /* Footer always sits at the bottom, even on short pages */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 .text-link, .back-link { color: var(--accent); text-decoration: none; }
@@ -397,9 +402,12 @@ body.site .site-shell {
   display: flex;
   gap: 24px;
   max-width: 1120px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 0 18px;
   align-items: flex-start;
+  flex: 1 0 auto;
 }
 body.site .site-main { flex: 1 1 auto; min-width: 0; padding: 20px 0 40px; }
 
@@ -761,7 +769,7 @@ body.site .site-footer {
   background: color-mix(in srgb, var(--accent) 55%, #000); /* deep shade of the brand colour */
   color: #f1dede;
   padding: 18px 18px 16px;
-  margin-top: 28px;
+  margin-top: auto;
   font-size: 13px;
   display: flex;
   flex-direction: column;
