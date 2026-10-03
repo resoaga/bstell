@@ -23,6 +23,10 @@
       <input type="number" min="0" max="240" step="5" name="preorder_minutes" value="{{ settings.preorder_minutes }}">
     </label>
     <p class="hint">Ab so vielen Minuten vor der Öffnung nimmt die Webseite schon Bestellungen an (sie werden ab Öffnung bearbeitet). Davor und nach Ladenschluss ist Bestellen gesperrt, die Seite zeigt Telefon und Öffnungszeit. 0 = nur zu den Öffnungszeiten.</p>
+    <label>Stornierungsgründe (ein Vorschlag pro Zeile)
+      <textarea name="cancel_reasons" rows="6" placeholder="Leer lassen = Standardliste">{{ settings.cancel_reasons or '' }}</textarea>
+    </label>
+    <p class="hint">Diese Texte kannst du im Admin beim Stornieren mit einem Tipp wählen. Der Kunde sieht den Grund und bekommt ihn per E-Mail.</p>
     <label>Mindestbestellwert (CHF)
       <input type="number" step="0.05" min="0" name="minimum_order_value" value="{{ settings.minimum_order_value }}">
     </label>

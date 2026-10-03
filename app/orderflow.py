@@ -15,7 +15,7 @@ from .models import PAYMENT_LABELS, Order, OrderStatus, OrderType
 _ip_hits = defaultdict(deque)
 MAX_ORDERS_PER_IP_PER_HOUR = 8
 MAX_ORDERS_PER_PHONE_PER_HOUR = 4
-MIN_SECONDS_ON_CHECKOUT = 3
+MIN_SECONDS_ON_CHECKOUT = 1  # prefilled forms can legitimately be sent within seconds
 
 
 def ip_limit_reached(ip: str) -> bool:
@@ -79,7 +79,7 @@ def send_confirmation(order_id: int, base_url: str) -> None:
         if order.delivery_fee_paid:
             extra.append(("Lieferung", f"CHF {order.delivery_fee_paid:.2f}"))
         if order.service_fee:
-            extra.append((settings.service_fee_label or "Servicegebühr", f"CHF {order.service_fee:.2f}"))
+            extra.append((order.service_fee_text or settings.service_fee_label or "Servicegebühr", f"CHF {order.service_fee:.2f}"))
 
         # ---- HTML ----
         body = (
@@ -136,5 +136,44 @@ def send_confirmation(order_id: int, base_url: str) -> None:
             if pdf:
                 attachments = [(f"Beleg-Bestellung-{order.id}.pdf", pdf, "application/pdf")]
         send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", "\n".join(text), html, attachments)
+    finally:
+        db.close()
+
+
+def send_cancellation(order_id: int, base_url: str) -> None:
+    """Background task: tell the customer that the order was cancelled (with the reason)."""
+    from .database import SessionLocal
+    from .repo import get_settings
+
+    db = SessionLocal()
+    try:
+        order = db.get(Order, order_id)
+        settings = get_settings(db)
+        if order is None or not order.email or not settings.send_order_confirmation or not mail_configured(settings):
+            return
+        shop = settings.name or "unser Restaurant"
+        contact_line = " · ".join(x for x in (settings.phone, settings.email) if x)
+        refund = order.payment_method == "online"
+        reason = order.cancel_reason or ""
+        body_html = (
+            mailhtml.paragraph(f"Hallo {order.customer_name},")
+            + mailhtml.paragraph(f"leider mussten wir deine Bestellung #{int(order.id)} bei {shop} stornieren. Das tut uns leid.")
+            + (mailhtml.info_box([("Grund", reason)]) if reason else "")
+            + (mailhtml.paragraph("Du hast online bezahlt: Wir erstatten dir den Betrag. Er wird dir in den nächsten Tagen gutgeschrieben.") if refund else "")
+            + mailhtml.paragraph(
+                "Bei Fragen erreichst du uns gerne direkt" + (f" unter {contact_line}" if contact_line else "") + "."
+            )
+            + mailhtml.button(base_url + "/", "Neu bestellen", settings.accent_color)
+        )
+        footer = (escape(shop) + ("<br>" + escape(contact_line) if contact_line else "") + "<br><br>Diese E-Mail wurde automatisch versendet.")
+        html = mailhtml.wrap(shop, settings.accent_color, "Bestellung storniert", body_html, footer, f"Bestellung #{order.id} wurde storniert.")
+        text = [f"Hallo {order.customer_name},", "",
+                f"leider mussten wir deine Bestellung #{order.id} bei {shop} stornieren."]
+        if reason:
+            text.append(f"Grund: {reason}")
+        if refund:
+            text.append("Du hast online bezahlt: Wir erstatten dir den Betrag in den nächsten Tagen.")
+        text += ["", f"Bei Fragen: {contact_line}" if contact_line else "", "", base_url + "/"]
+        send_mail(order.email, f"Deine Bestellung #{order.id} wurde storniert", "\n".join(text), html)
     finally:
         db.close()

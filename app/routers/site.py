@@ -128,6 +128,7 @@ def site_extra(request: Request, db: Session) -> dict:
         "shop": shop,
         "can_order": bool(settings.accepting_orders and shop["state"] in ("open", "preorder")),
         "service_fee": cart_fee,
+        "service_fee_text": cart_lib.service_fee_text(settings),
         "cart_total_with_fee": cart_total + cart_fee,
         "my_active_order": cust.active_order(my_orders),
         "has_history": bool(my_orders),
@@ -452,7 +453,7 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
         too_fast = time.time() - float(form.get("t0")) < orderflow.MIN_SECONDS_ON_CHECKOUT
     except (TypeError, ValueError):
         too_fast = True
-    if form.get("website") or too_fast:
+    if form.get("hp_trap") or too_fast:
         return error_response("Das ging zu schnell. Bitte kurz prüfen und noch einmal absenden.")
     if orderflow.ip_limit_reached(ip) or orderflow.phone_or_device_limit_reached(db, phone, device_key):
         return error_response("Zu viele Bestellungen in kurzer Zeit. Bitte rufe uns kurz an" + (f": {settings.phone}" if settings.phone else "") + ".")
@@ -474,6 +475,7 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
         note=note,
         total=order_total,
         service_fee=service_fee,
+        service_fee_text=cart_lib.service_fee_text(settings) if service_fee else "",
         items=[
             OrderItem(
                 item_name=line["item"].name,
@@ -691,7 +693,7 @@ async def request_history_link(request: Request, background: BackgroundTasks, db
     form = await request.form()
     email = cust.normalize_email(form.get("email") or "")
     # Honeypot field: real visitors never fill it
-    if form.get("website") or not email or "@" not in email or len(email) > 254:
+    if form.get("hp_trap") or not email or "@" not in email or len(email) > 254:
         return RedirectResponse(url="/verfolgen?link=invalid", status_code=303)
     settings = get_settings(db)
     if not mail_configured(settings):

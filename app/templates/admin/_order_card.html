@@ -30,6 +30,7 @@
       <span class="ord-name">{{ line.item_name }}{% if line.options_summary %}<small>{{ line.options_summary }}</small>{% endif %}</span></li>
     {% endfor %}
   </ul>
+  {% if order.status.value == "cancelled" %}<p class="ord-cancelled-note">STORNIERT{% if order.cancel_reason %}: {{ order.cancel_reason }}{% endif %}</p>{% endif %}
   {% if order.note %}<p class="ord-note">⚠ {{ order.note }}</p>{% endif %}
 
   <div class="ord-foot">

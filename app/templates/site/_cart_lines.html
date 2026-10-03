@@ -1,7 +1,7 @@
 {% if lines %}
 <div class="cart-actions">
   <p class="cart-actions-total">Total <strong>CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
-  {% if service_fee %}<p class="cart-fee-note">inkl. {{ settings.service_fee_label }} CHF {{ "%.2f"|format(service_fee) }}</p>{% endif %}
+  {% if service_fee %}<p class="cart-fee-note">inkl. {{ service_fee_text }}: CHF {{ "%.2f"|format(service_fee) }}</p>{% endif %}
   <div class="cart-actions-buttons">
     <a class="btn-secondary" href="/">← Weiter einkaufen</a>
     {% if below_minimum or lines|selectattr("blocked_until")|list %}
@@ -41,7 +41,7 @@
 </ul>
 {% if service_fee %}
 <p class="cart-sub">Zwischensumme <span>CHF {{ "%.2f"|format(total) }}</span></p>
-<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode == "percent" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
+<p class="cart-sub">{{ service_fee_text }} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
 {% endif %}
 <p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
 {% if not below_minimum and not (lines|selectattr("blocked_until")|list) %}<a class="btn-primary btn-block" href="/kasse">Zur Kasse</a>{% endif %}

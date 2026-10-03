@@ -105,7 +105,7 @@ def build_receipt(order, settings):
     if order.delivery_fee_paid:
         total_row("Lieferung", order.delivery_fee_paid)
     if order.service_fee:
-        total_row(settings.service_fee_label or "Servicegebühr", order.service_fee)
+        total_row(order.service_fee_text or settings.service_fee_label or "Servicegebühr", order.service_fee)
     total_row("Total CHF (inkl. MwSt.)", order.total, bold=True)
 
     pdf.ln(8)

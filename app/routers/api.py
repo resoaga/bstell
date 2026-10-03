@@ -6,7 +6,7 @@ browser/session involved."""
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -116,6 +116,7 @@ def set_category_available(category_id: int, payload: AvailabilityIn, db: Sessio
 
 class OrderStatusIn(BaseModel):
     status: OrderStatus
+    reason: Optional[str] = None  # only used with status=cancelled
 
 
 ALLOWED_TRANSITIONS = {
@@ -139,6 +140,7 @@ def _order_json(order: Order) -> dict:
         "city": order.customer_city,
         "payment": order.payment_method,  # cash | card (collect at handover) | online (already paid)
         "paid": order.payment_method == "online",
+        "cancel_reason": order.cancel_reason or "",
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
@@ -163,7 +165,7 @@ def list_orders(since_id: int = 0, db: Session = Depends(get_db)):
 
 
 @router.post("/bestellungen/{order_id}/status", dependencies=[Depends(require_freiwirt_token)])
-def set_order_status(order_id: int, payload: OrderStatusIn, db: Session = Depends(get_db)):
+def set_order_status(order_id: int, payload: OrderStatusIn, request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
     """Accept (preparing), mark ready/on the way (ready), complete, or cancel.
     The customer's tracking page shows the new status on its next refresh."""
     order = db.get(Order, order_id)
@@ -174,5 +176,10 @@ def set_order_status(order_id: int, payload: OrderStatusIn, db: Session = Depend
     if payload.status not in ALLOWED_TRANSITIONS.get(order.status, set()):
         raise HTTPException(status_code=409, detail=f"Wechsel {order.status.value} -> {payload.status.value} nicht erlaubt")
     order.status = payload.status
+    if payload.status == OrderStatus.cancelled:
+        order.cancel_reason = (payload.reason or "").strip()[:200]
     db.commit()
+    if payload.status == OrderStatus.cancelled:
+        from .. import customer as cust, orderflow
+        background.add_task(orderflow.send_cancellation, order.id, cust.public_base_url(request))
     return _order_json(order)

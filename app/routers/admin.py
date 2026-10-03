@@ -8,19 +8,21 @@ import secrets
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import customer as cust
+from .. import orderflow
 from ..auth import require_admin, verify_same_origin
 from .. import timeutil
 from ..assets import css_version
 from ..database import get_db
 from ..models import (
     ORDER_STATUS_LABELS,
+    DEFAULT_CANCEL_REASONS,
     PAYMENT_LABELS,
     WEEKDAY_LABELS,
     Category,
@@ -553,6 +555,11 @@ def link_requests(request: Request, db: Session = Depends(get_db)):
 OPEN_STATES = (OrderStatus.received, OrderStatus.preparing, OrderStatus.ready)
 
 
+def _cancel_reasons(db: Session) -> list:
+    lines = [l.strip() for l in (get_settings(db).cancel_reasons or "").splitlines() if l.strip()]
+    return lines or list(DEFAULT_CANCEL_REASONS)
+
+
 def _orders_context(db: Session) -> dict:
     now = datetime.utcnow()
     open_orders = (
@@ -577,6 +584,7 @@ def _orders_context(db: Session) -> dict:
         "signature": signature,
         "new_count": sum(1 for o in open_orders if o.status == OrderStatus.received),
         "payment_labels": PAYMENT_LABELS,
+        "cancel_reasons": _cancel_reasons(db),
         "estimate": {"pickup": 15, "delivery": 30},
         **ORDER_TEMPLATE_EXTRAS,
     }
@@ -619,22 +627,36 @@ def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)
     db.commit()
     response = templates.TemplateResponse(
         "admin/_order_row_actions.html",
-        {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
+        {"request": request, "order": order, "cancel_reasons": _cancel_reasons(db), **ORDER_TEMPLATE_EXTRAS},
     )
     response.headers["HX-Trigger"] = "ordersChanged"
     return response
 
 
 @router.post("/orders/{order_id}/cancel", dependencies=mutating)
-def cancel_order(order_id: int, request: Request, db: Session = Depends(get_db)):
+def cancel_order(
+    order_id: int,
+    request: Request,
+    background: BackgroundTasks,
+    preset: str = Form(""),
+    custom: str = Form(""),
+    db: Session = Depends(get_db),
+):
     order = db.get(Order, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.status == OrderStatus.cancelled:
+        return templates.TemplateResponse(
+            "admin/_order_row_actions.html",
+            {"request": request, "order": order, "cancel_reasons": _cancel_reasons(db), **ORDER_TEMPLATE_EXTRAS},
+        )
     order.status = OrderStatus.cancelled
+    order.cancel_reason = (custom.strip() or preset.strip())[:200]
     db.commit()
+    background.add_task(orderflow.send_cancellation, order.id, cust.public_base_url(request))
     response = templates.TemplateResponse(
         "admin/_order_row_actions.html",
-        {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
+        {"request": request, "order": order, "cancel_reasons": _cancel_reasons(db), **ORDER_TEMPLATE_EXTRAS},
     )
     response.headers["HX-Trigger"] = "ordersChanged"
     return response
@@ -826,6 +848,7 @@ def update_ordering_settings(
     minimum_order_value: float = Form(0.0),
     delivery_fee: float = Form(0.0),
     preorder_minutes: int = Form(60),
+    cancel_reasons: str = Form(""),
     service_fee_enabled: bool = Form(False),
     service_fee_percent: float = Form(0.0),
     service_fee_fixed: float = Form(0.0),
@@ -834,6 +857,7 @@ def update_ordering_settings(
 ):
     settings = get_settings(db)
     settings.preorder_minutes = max(0, min(preorder_minutes, 240))
+    settings.cancel_reasons = "\n".join(l.strip()[:120] for l in cancel_reasons.splitlines() if l.strip())[:2000]
     settings.service_fee_enabled = service_fee_enabled
     percent = max(0.0, min(service_fee_percent, 20.0))
     fixed = max(0.0, min(service_fee_fixed, 50.0))

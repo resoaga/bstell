@@ -16,7 +16,7 @@
       data-zips="{{ zips|join(',') }}">
 
   <input type="hidden" name="t0" value="{{ t0 }}">
-  <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <input type="text" name="hp_trap" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
   <details class="co-summary">
     <summary>
       <span>{{ lines|sum(attribute='quantity') }} Artikel</span>
@@ -31,7 +31,7 @@
       {% endfor %}
     </ul>
   </details>
-  {% if service_fee %}<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode == "percent" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
+  {% if service_fee %}<p class="cart-sub">{{ service_fee_text }} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
   {% if settings.delivery_enabled and settings.delivery_fee %}<p class="cart-sub" id="co-delivery-row">Lieferung <span>CHF {{ "%.2f"|format(settings.delivery_fee) }}</span></p>{% endif %}
 
   {% if both_types %}

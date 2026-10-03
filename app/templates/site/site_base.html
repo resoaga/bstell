@@ -15,7 +15,6 @@
   {% if settings.hero_image_filename %}<meta property="og:image" content="{{ site_base_url }}/static/uploads/{{ settings.hero_image_filename }}">{% elif settings.logo_filename %}<meta property="og:image" content="{{ site_base_url }}/static/uploads/{{ settings.logo_filename }}">{% endif %}
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='{{ (settings.accent_color or '#c8102e')|urlencode }}'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E{{ ((settings.name or 'B')[0]|upper)|urlencode }}%3C/text%3E%3C/svg%3E">
   <meta name="theme-color" content="{{ settings.accent_color or '#c8102e' }}">
-  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <script src="/static/htmx.min.js" defer></script>
   <link rel="stylesheet" href="/static/style.css?v={{ css_version() }}">
   <style>:root { --accent: {{ settings.accent_color or "#c8102e" }}; }</style>

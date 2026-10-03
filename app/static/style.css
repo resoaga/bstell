@@ -217,7 +217,7 @@ label input, label select, label textarea { display: block; margin-top: 4px; }
 .status-badge.status-preparing { background: #fff4e5; color: #c77b1a; }
 .status-badge.status-ready { background: #e6f4ea; color: #1e7e34; }
 .status-badge.status-completed { background: #eee; color: #666; }
-.status-badge.status-cancelled { background: #eee; color: #999; text-decoration: line-through; }
+.status-badge.status-cancelled { background: #fdecea; color: #c0392b; font-weight: 700; }
 
 /* ---- Settings sub-navigation ---- */
 .settings-nav {
@@ -1001,3 +1001,20 @@ body.site .co-summary .lines { padding: 0 14px 6px; }
 
 /* The hidden attribute must always win over component display rules */
 body.site [hidden] { display: none !important; }
+
+/* Cancelled orders must be impossible to overlook */
+.ord-cancelled { border-left-color: #d92d20; background: #fff1f0; opacity: 1; }
+.ord-cancelled-note { margin: 6px 0; padding: 8px 10px; background: #d92d20; color: #fff; border-radius: 6px; font-weight: 800; }
+.cancel-box { display: inline-block; }
+.cancel-box summary { list-style: none; cursor: pointer; display: inline-block; background: #c0392b; color: #fff; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 600; }
+.cancel-box summary::-webkit-details-marker { display: none; }
+.cancel-box[open] summary { background: #eee; color: #444; }
+.cancel-box form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; min-width: 240px; padding: 10px; background: #fff; border: 1px solid #e0e4ea; border-radius: 8px; }
+.cancel-box select, .cancel-box input { width: 100%; }
+body.site .cancel-banner { display: flex; flex-direction: column; gap: 3px; margin: 10px 0; padding: 12px 14px; background: #fdecea; border: 2px solid #d92d20; border-radius: 10px; color: #8a1212; font-size: 15px; }
+body.site .cancel-banner a { color: #8a1212; font-weight: 700; }
+body.site .order-card:has(.cancel-banner) { border-color: #d92d20; }
+
+/* Options dialog: lock the page behind it, scroll only inside the dialog */
+body.site:has(dialog[open]) { overflow: hidden; }
+body.site .item-dialog { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }

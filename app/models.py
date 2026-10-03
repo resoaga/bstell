@@ -26,6 +26,15 @@ class OrderType(str, enum.Enum):
     delivery = "delivery"
 
 
+DEFAULT_CANCEL_REASONS = [
+    "Ein Artikel ist leider ausverkauft",
+    "Wir sind aktuell überlastet und können nicht liefern",
+    "Die Adresse liegt ausserhalb unseres Liefergebiets",
+    "Wir konnten dich telefonisch nicht erreichen",
+    "Doppelte Bestellung",
+    "Auf deinen Wunsch storniert",
+]
+
 PAYMENT_LABELS = {
     "online": "Online bezahlen",
     "cash": "Bar",
@@ -167,6 +176,8 @@ class Order(Base):
     status = Column(Enum(OrderStatus), default=OrderStatus.received, nullable=False)
     total = Column(Float, nullable=False, default=0.0)
     service_fee = Column(Float, default=0.0)
+    service_fee_text = Column(String, default="")  # e.g. "Servicegebühr (2 % + CHF 0.30)" as it was when ordered
+    cancel_reason = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     items = relationship(
@@ -245,7 +256,8 @@ class RestaurantSettings(Base):
     hours_note = Column(String, default="")
     footer_credit = Column(String, default="")
     vat_number = Column(String, default="")  # UID / MWST-Nr., printed on the receipt when set
-    attach_receipt_pdf = Column(Boolean, default=False, nullable=False)  # free text under the opening hours (e.g. special days)
+    attach_receipt_pdf = Column(Boolean, default=False, nullable=False)
+    cancel_reasons = Column(Text, default="")  # one preset per line; empty = built-in defaults  # free text under the opening hours (e.g. special days)
     phone = Column(String, default="")
     email = Column(String, default="")
 

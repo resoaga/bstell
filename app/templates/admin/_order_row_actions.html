@@ -7,9 +7,17 @@
   </form>
   {% endif %}
   {% if order.status.value not in ("completed", "cancelled") %}
-  <form hx-post="/admin/orders/{{ order.id }}/cancel" hx-target="#order-actions-{{ order.id }}"
-        hx-swap="innerHTML" class="inline" onsubmit="return confirm('Bestellung wirklich stornieren?')">
-    <button type="submit" class="danger small">Stornieren</button>
-  </form>
+  <details class="cancel-box">
+    <summary class="danger small">Stornieren</summary>
+    <form hx-post="/admin/orders/{{ order.id }}/cancel" hx-target="#order-actions-{{ order.id }}" hx-swap="innerHTML">
+      <select name="preset" aria-label="Grund wählen">
+        <option value="">Grund wählen …</option>
+        {% for reason in cancel_reasons %}<option>{{ reason }}</option>{% endfor %}
+      </select>
+      <input type="text" name="custom" placeholder="oder eigener Text" maxlength="200">
+      {% if order.payment_method == "online" %}<p class="hint">Online bezahlt: Rückerstattung bitte im Payrexx-Dashboard auslösen.</p>{% endif %}
+      <button type="submit" class="danger">Jetzt stornieren</button>
+    </form>
+  </details>
   {% endif %}
 </div>

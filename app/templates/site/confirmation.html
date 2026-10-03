@@ -10,6 +10,7 @@
 </div>
 
 <section class="category">
+  {% if order.status.value == "cancelled" %}<div class="cancel-banner" role="alert"><strong>Diese Bestellung wurde storniert.</strong>{% if order.cancel_reason %}<span>Grund: {{ order.cancel_reason }}</span>{% endif %}</div>{% endif %}
   <p>
     <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_label }} · {% if order.payment_method == "online" %}online bezahlt{% else %}{{ payment_labels.get(order.payment_method, "") }} bei Übergabe{% endif %}</span>
@@ -33,7 +34,7 @@
   {% if order.service_fee or order.delivery_fee_paid %}
   <p class="cart-sub">Warenwert <span>CHF {{ "%.2f"|format(order.goods_total) }}</span></p>
   {% if order.delivery_fee_paid %}<p class="cart-sub">Lieferung <span>CHF {{ "%.2f"|format(order.delivery_fee_paid) }}</span></p>{% endif %}
-  {% if order.service_fee %}<p class="cart-sub">{{ settings.service_fee_label }} <span>CHF {{ "%.2f"|format(order.service_fee) }}</span></p>{% endif %}
+  {% if order.service_fee %}<p class="cart-sub">{{ order.service_fee_text or settings.service_fee_label }} <span>CHF {{ "%.2f"|format(order.service_fee) }}</span></p>{% endif %}
   {% endif %}
   <p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong> <small>inkl. MwSt.</small></p>
   <a class="btn-primary btn-block" href="/verfolgen/{{ order.tracking_token }}">Bestellung verfolgen</a>
