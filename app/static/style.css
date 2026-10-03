@@ -902,3 +902,4 @@ body.site .co-note summary { cursor: pointer; font-size: 14px; font-weight: 600;
 body.site .co-note textarea { width: 100%; margin-top: 6px; min-height: 60px; font-size: 16px; }
 body.site .co-hint { margin: -4px 0 0; text-align: center; }
 body.site #co-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+body.site .co-pay-info { margin: 0 0 -4px; padding: 9px 12px; background: #fff7e0; border: 1px solid #f0dca0; border-radius: 8px; font-size: 13.5px; line-height: 1.4; color: #6b5200; }

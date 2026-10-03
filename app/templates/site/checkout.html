@@ -62,6 +62,9 @@
     <p class="co-zip-hint" id="co-zip-hint" hidden>Leider liefern wir nicht in diese PLZ. Abholung ist möglich.</p>
   </div>
 
+  {% if not (payment_options | selectattr(0, "equalto", "online") | list) %}
+  <p class="co-pay-info">ℹ️ Online-Zahlung ist momentan nicht möglich. Aktuell bezahlst du bei {{ "Lieferung" if settings.delivery_enabled and not settings.pickup_enabled else ("Abholung" if settings.pickup_enabled and not settings.delivery_enabled else "Lieferung oder Abholung") }} mit Karte, Twint oder bar.</p>
+  {% endif %}
   <div class="co-seg co-pay" role="radiogroup" aria-label="Zahlungsart">
     {% for key, label, hint in payment_options %}
     <label><input type="radio" name="payment" value="{{ key }}" {{ "checked" if pay == key else "" }}><span>{{ label }}<small>{{ hint }}</small></span></label>
