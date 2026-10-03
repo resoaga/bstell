@@ -23,6 +23,7 @@ from ..models import (
     OpeningHour,
     Option,
     OptionGroup,
+    AvailabilityRule,
     LoginLink,
     Order,
     OrderStatus,
@@ -157,6 +158,7 @@ SETTINGS_TABS = [
     ("website", "Webseite"),
     ("ordering", "Bestellannahme"),
     ("hours", "Öffnungszeiten"),
+    ("times", "Bestellzeiten"),
     ("delivery-zone", "Liefergebiet"),
     ("payment", "Zahlungsdienstleister"),
     ("email", "E-Mail"),
@@ -681,6 +683,66 @@ def update_legal_page(
     page.body = body
     db.commit()
     return RedirectResponse(url="/admin/settings/legal", status_code=303)
+
+
+def _valid_time(value: str) -> bool:
+    return bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value or ""))
+
+
+@router.get("/settings/times")
+def settings_times(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        "admin/settings_times.html",
+        {
+            "request": request,
+            "rules": db.query(AvailabilityRule).order_by(AvailabilityRule.id).all(),
+            "categories": db.query(Category).order_by(Category.sort_order, Category.id).all(),
+            "weekday_labels": WEEKDAY_LABELS,
+            "error": request.query_params.get("error"),
+            **settings_context("times", db),
+        },
+    )
+
+
+@router.post("/settings/times/new", dependencies=mutating)
+def create_time_rule(db: Session = Depends(get_db)):
+    db.add(AvailabilityRule(name="Nicht bestellbar", weekdays="", start_time="14:00", end_time="17:00"))
+    db.commit()
+    return RedirectResponse(url="/admin/settings/times", status_code=303)
+
+
+@router.post("/settings/times/{rule_id}", dependencies=mutating)
+async def update_time_rule(rule_id: int, request: Request, db: Session = Depends(get_db)):
+    rule = db.get(AvailabilityRule, rule_id)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Regel nicht gefunden")
+    form = await request.form()
+    start, end = (form.get("start_time") or "").strip(), (form.get("end_time") or "").strip()
+    if not (_valid_time(start) and _valid_time(end) and start < end):
+        return RedirectResponse(
+            url="/admin/settings/times?error=Bitte+Von+und+Bis+als+Uhrzeit+eintragen+(Von+vor+Bis,+Ende+z.B.+23:59)",
+            status_code=303,
+        )
+    rule.name = (form.get("name") or "").strip()[:60] or "Nicht bestellbar"
+    rule.weekdays = ",".join(sorted({d for d in form.getlist("weekday") if d in "0123456" and len(d) == 1}))
+    rule.start_time, rule.end_time = start, end
+    cat_ids = {int(v) for v in form.getlist("category") if v.isdigit()}
+    item_ids = {int(v) for v in form.getlist("item") if v.isdigit()}
+    rule.categories = db.query(Category).filter(Category.id.in_(cat_ids)).all() if cat_ids else []
+    rule.items = db.query(MenuItem).filter(MenuItem.id.in_(item_ids)).all() if item_ids else []
+    db.commit()
+    return RedirectResponse(url="/admin/settings/times", status_code=303)
+
+
+@router.post("/settings/times/{rule_id}/delete", dependencies=mutating)
+def delete_time_rule(rule_id: int, db: Session = Depends(get_db)):
+    rule = db.get(AvailabilityRule, rule_id)
+    if rule is not None:
+        rule.categories = []
+        rule.items = []
+        db.delete(rule)
+        db.commit()
+    return RedirectResponse(url="/admin/settings/times", status_code=303)
 
 
 @router.get("/settings/ordering")

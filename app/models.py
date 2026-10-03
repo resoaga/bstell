@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -300,6 +300,37 @@ CONTENT_PAGE_DEFAULTS = [
     ("widerruf", "Widerrufsrecht", ""),
     ("impressum", "Impressum", ""),
 ]
+
+
+rule_categories = Table(
+    "rule_categories",
+    Base.metadata,
+    Column("rule_id", Integer, ForeignKey("availability_rules.id"), primary_key=True),
+    Column("category_id", Integer, ForeignKey("categories.id"), primary_key=True),
+)
+rule_items = Table(
+    "rule_items",
+    Base.metadata,
+    Column("rule_id", Integer, ForeignKey("availability_rules.id"), primary_key=True),
+    Column("item_id", Integer, ForeignKey("menu_items.id"), primary_key=True),
+)
+
+
+class AvailabilityRule(Base):
+    """"Not orderable" window, defined once and assigned to any number of
+    categories / single items (e.g. 14:00-17:00 for the pizza category because
+    the oven is off). Outside the window the item is orderable as usual."""
+
+    __tablename__ = "availability_rules"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, default="Nicht bestellbar")
+    weekdays = Column(String, default="")  # "0,1,2" (Mon=0); empty = every day
+    start_time = Column(String, nullable=False, default="14:00")
+    end_time = Column(String, nullable=False, default="17:00")
+
+    categories = relationship("Category", secondary=rule_categories)
+    items = relationship("MenuItem", secondary=rule_items)
 
 
 class OpeningHour(Base):

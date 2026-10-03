@@ -74,11 +74,13 @@
 {% for category in categories %}
 <section class="category" id="cat-{{ category.id }}">
   <h1>{{ category.name }}</h1>
+  {% if cat_block[category.id] %}<p class="category-block-note">{{ cat_block[category.id] }}</p>{% endif %}
   <div class="menu-grid">
     {% for item in category.items if item.is_available %}
     {% set required_links = item.option_links | selectattr("required") | list %}
     {% set extra_links = item.option_links | rejectattr("required") | list %}
-    <div class="menu-card" data-name="{{ item.name|lower }}">
+    {% set blocked = item_block[item.id] %}
+    <div class="menu-card{{ ' is-blocked' if blocked }}" data-name="{{ item.name|lower }}">
       <div class="menu-card-media">
         {% if item.image_filename %}
         <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" width="96" height="96" loading="lazy" decoding="async">
@@ -92,7 +94,9 @@
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
       </div>
-      {% if settings.accepting_orders %}
+      {% if blocked %}
+      <div class="menu-card-action"><span class="block-pill">{{ blocked }}</span></div>
+      {% elif settings.accepting_orders %}
       <div class="menu-card-action">
         {% if item.option_links %}
         <button type="button" class="add-btn" aria-label="{{ item.name }} auswählen"

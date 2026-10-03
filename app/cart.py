@@ -9,6 +9,7 @@ from typing import List
 from fastapi import Request
 from sqlalchemy.orm import Session
 
+from . import availability
 from .models import MenuItem
 
 
@@ -58,6 +59,7 @@ def resolve_cart_lines(request: Request, db: Session):
     lines = []
     total = 0.0
     changed = False
+    rules = availability.load_rules(db)
     for key, line in list(cart.items()):
         item = db.get(MenuItem, line["item_id"])
         if item is None or not item.is_available:
@@ -84,6 +86,7 @@ def resolve_cart_lines(request: Request, db: Session):
                 "unit_price": unit_price,
                 "quantity": quantity,
                 "line_total": line_total,
+                "blocked_until": availability.blocked_until(rules, item.category_id, item.id),
             }
         )
         total += line_total

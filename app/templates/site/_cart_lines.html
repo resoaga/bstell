@@ -4,7 +4,7 @@
   {% if service_fee %}<p class="cart-fee-note">inkl. {{ settings.service_fee_label }} CHF {{ "%.2f"|format(service_fee) }}</p>{% endif %}
   <div class="cart-actions-buttons">
     <a class="btn-secondary" href="/">← Weiter einkaufen</a>
-    {% if below_minimum %}
+    {% if below_minimum or lines|selectattr("blocked_until")|list %}
     <span class="btn-primary is-disabled" aria-disabled="true">Zur Kasse</span>
     {% else %}
     <a class="btn-primary" href="/kasse">Zur Kasse</a>
@@ -22,6 +22,7 @@
       <strong>{{ line.item.name }}</strong>
       <span class="cart-line-total">CHF {{ "%.2f"|format(line.line_total) }}</span>
     </div>
+    {% if line.blocked_until %}<span class="cart-line-blocked">Aktuell nicht bestellbar – {{ "heute nicht mehr" if line.blocked_until >= "23:59" else "ab " ~ line.blocked_until }}. Bitte entfernen.</span>{% endif %}
     {% if line.options %}<span class="cart-line-options">{{ line.options|map(attribute='name')|join(', ') }}</span>{% endif %}
     <div class="cart-line-foot">
       <div class="qty-stepper" role="group" aria-label="Menge">
@@ -43,7 +44,7 @@
 <p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode != "fixed" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
 {% endif %}
 <p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
-{% if not below_minimum %}<a class="btn-primary btn-block" href="/kasse">Zur Kasse</a>{% endif %}
+{% if not below_minimum and not (lines|selectattr("blocked_until")|list) %}<a class="btn-primary btn-block" href="/kasse">Zur Kasse</a>{% endif %}
 {% else %}
 <p class="empty">Der Warenkorb ist leer.</p>
 <a class="btn-primary" href="/">Jetzt bestellen</a>

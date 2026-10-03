@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from .. import cart as cart_lib
 from ..contact_cookie import COOKIE_MAX_AGE, COOKIE_NAME, decode_contact, encode_contact
+from .. import availability
 from .. import customer as cust
 from ..assets import css_version
 from ..mailer import mail_configured, send_mail
@@ -127,10 +128,24 @@ def homepage(request: Request, db: Session = Depends(get_db)):
         for item in category.items
         if item.is_available
     ][:5]
+    rules = availability.load_rules(db)
+    item_block = {}
+    cat_block = {}
+    for category in categories:
+        times = []
+        for item in category.items:
+            until = availability.blocked_until(rules, category.id, item.id)
+            if until:
+                item_block[item.id] = availability.describe(until)
+            times.append(until)
+        if times and all(times):
+            cat_block[category.id] = availability.describe(max(times))
     return templates.TemplateResponse(
         "site/index.html",
         {
             "request": request,
+            "item_block": item_block,
+            "cat_block": cat_block,
             "categories": categories,
             "promo_items": promo_items,
             **site_extra(request, db),
@@ -163,6 +178,13 @@ async def add_to_cart(request: Request, db: Session = Depends(get_db)):
         return templates.TemplateResponse(
             "site/_add_result.html",
             {"request": request, "error": "Artikel nicht verfügbar.", **site_extra(request, db)},
+        )
+
+    until = availability.blocked_until(availability.load_rules(db), item.category_id, item.id)
+    if until:
+        return templates.TemplateResponse(
+            "site/_add_result.html",
+            {"request": request, "error": f"{item.name}: {availability.describe(until)}.", **site_extra(request, db)},
         )
 
     try:
@@ -316,6 +338,11 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         return error_response(
             f"Mindestbestellwert ist CHF {settings.minimum_order_value:.2f}."
         )
+
+    blocked = [l for l in lines if l["blocked_until"]]
+    if blocked:
+        names = ", ".join(f'{l["item"].name} ({availability.describe(l["blocked_until"])})' for l in blocked)
+        return error_response(f"Aktuell nicht bestellbar: {names}. Bitte im Warenkorb entfernen.")
 
     customer_name = (form.get("customer_name") or "").strip()
     phone = (form.get("phone") or "").strip()

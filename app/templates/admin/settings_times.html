@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Einstellungen</h2>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Bestellzeiten</h2>
+  <p class="hint">
+    Normalerweise ist alles von Öffnung bis Schliessung bestellbar. Hier legst du <strong>Sperrzeiten</strong> fest, in denen
+    bestimmte Kategorien oder Artikel <strong>nicht bestellbar</strong> sind (z.&nbsp;B. Pizza 14:00–17:00, weil der Ofen aus ist).
+    Auf der Webseite erscheinen sie in dieser Zeit ausgegraut mit „bestellbar ab 17:00“. Zusätzlich prüft die Kasse das beim Absenden.
+    Eine Regel einmal anlegen, dann beliebig viele Kategorien und Artikel zuordnen. Ohne Tag-Auswahl gilt sie jeden Tag.
+    Ende bitte als 23:59 statt 00:00 eintragen („heute nicht mehr bestellbar“).
+  </p>
+  {% if error %}<p class="notice">{{ error }}</p>{% endif %}
+  <form method="post" action="/admin/settings/times/new"><button type="submit">+ Neue Sperrzeit</button></form>
+</section>
+
+{% for rule in rules %}
+{% set rule_days = rule.weekdays.split(",") if rule.weekdays else [] %}
+{% set rule_cats = rule.categories | map(attribute="id") | list %}
+{% set rule_items = rule.items | map(attribute="id") | list %}
+<section class="category">
+  <form method="post" action="/admin/settings/times/{{ rule.id }}">
+    <label>Name
+      <input type="text" name="name" value="{{ rule.name }}" maxlength="60">
+    </label>
+    <div class="option-choice">
+      <span class="tag">Tage (keine Auswahl = jeden Tag)</span>
+      {% for d in range(7) %}
+      <label class="checkbox-label"><input type="checkbox" name="weekday" value="{{ d }}" {{ "checked" if d|string in rule_days else "" }}> {{ weekday_labels[d] }}</label>
+      {% endfor %}
+    </div>
+    <label>Nicht bestellbar von
+      <input type="time" name="start_time" value="{{ rule.start_time }}" required>
+    </label>
+    <label>bis (dann wieder bestellbar)
+      <input type="time" name="end_time" value="{{ rule.end_time }}" required>
+    </label>
+    <div class="option-choice">
+      <span class="tag">Ganze Kategorien</span>
+      {% for category in categories %}
+      <label class="checkbox-label"><input type="checkbox" name="category" value="{{ category.id }}" {{ "checked" if category.id in rule_cats else "" }}> {{ category.name }}</label>
+      {% endfor %}
+    </div>
+    <details>
+      <summary>Einzelne Artikel ({{ rule_items|length }} gewählt)</summary>
+      {% for category in categories %}
+      <div class="option-choice">
+        <span class="tag">{{ category.name }}</span>
+        {% for item in category.items %}
+        <label class="checkbox-label"><input type="checkbox" name="item" value="{{ item.id }}" {{ "checked" if item.id in rule_items else "" }}> {{ item.name }}</label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </details>
+    <button type="submit">Speichern</button>
+  </form>
+  <form method="post" action="/admin/settings/times/{{ rule.id }}/delete" class="inline">
+    <button type="submit" class="danger">Regel löschen</button>
+  </form>
+</section>
+{% else %}
+<p class="empty">Noch keine Sperrzeiten.</p>
+{% endfor %}
+{% endblock %}
