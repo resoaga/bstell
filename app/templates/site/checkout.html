@@ -22,10 +22,12 @@
       <span>{{ lines|sum(attribute='quantity') }} Artikel</span>
       <strong>CHF {{ "%.2f"|format(total) }}</strong>
     </summary>
-    <ul class="options">
+    <ul class="lines">
       {% for line in lines %}
-      <li>{{ line.quantity }}× {{ line.item.name }}{% if line.options %} ({{ line.options|map(attribute='name')|join(', ') }}){% endif %}
-        <span>CHF {{ "%.2f"|format(line.line_total) }}</span></li>
+      <li>
+        <div class="lines-main"><strong>{{ line.quantity }}× {{ line.item.name }}</strong>{% if line.options %}<small>{{ line.options|map(attribute='name')|join(', ') }}</small>{% endif %}</div>
+        <span class="lines-price">CHF {{ "%.2f"|format(line.line_total) }}</span>
+      </li>
       {% endfor %}
     </ul>
   </details>

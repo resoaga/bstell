@@ -6,11 +6,28 @@
 set -e
 cd "$(dirname "$0")/.."
 
-echo "== Python-Pakete (Pillow fuer Bildverkleinerung) =="
-python3 -m pip install --user -q "Pillow>=10,<12" "fpdf2>=2.7,<3" || echo "Hinweis: pip-Installation fehlgeschlagen - Bilder werden dann unverkleinert gespeichert"
-
-python3 -c "import PIL; print('Pillow', PIL.__version__, 'OK')" || echo "Pillow nicht importierbar - bitte melden"
-python3 -c "import fpdf; print('fpdf2', fpdf.__version__, 'OK')" || echo "fpdf2 nicht importierbar - PDF-Beleg ist dann aus, Rest laeuft"
+echo "== Python-Pakete (Pillow fuer Bilder, fpdf2 fuer PDF-Beleg) =="
+# Das Python nehmen, mit dem die laufende App gestartet wurde (kann ein venv sein),
+# nicht blind "python3": sonst landen die Pakete woanders und die App findet sie nicht.
+APP_PY=""
+for PID in $(pgrep -f "uvicorn app.main:app"); do
+  [ -r "/proc/$PID/cmdline" ] || continue
+  FIRST=$(tr '\0' '\n' < "/proc/$PID/cmdline" | head -1)
+  case "$(basename "$FIRST")" in
+    python*)
+      case "$FIRST" in
+        /*) APP_PY="$FIRST" ;;
+        *)  APP_PY=$(command -v "$FIRST" 2>/dev/null || true) ;;
+      esac
+      break ;;
+  esac
+done
+[ -n "$APP_PY" ] && [ -x "$APP_PY" ] || APP_PY="python3"
+echo "App-Python: $APP_PY"
+if "$APP_PY" -c "import sys; sys.exit(0 if sys.prefix == sys.base_prefix else 1)"; then USERFLAG="--user"; else USERFLAG=""; fi
+"$APP_PY" -m pip install $USERFLAG -q "Pillow>=10,<12" "fpdf2>=2.7,<3" || echo "Hinweis: pip-Installation fehlgeschlagen - dann gibt es keine Bildverkleinerung/kein PDF"
+"$APP_PY" -c "import PIL; print('Pillow', PIL.__version__, 'OK')" || echo "Pillow im App-Python nicht importierbar - bitte melden"
+"$APP_PY" -c "import fpdf; print('fpdf2', fpdf.__version__, 'OK')" || echo "fpdf2 im App-Python nicht importierbar - PDF-Beleg ist dann aus, Rest laeuft"
 
 echo "== DB-Migrationen =="
 python3 scripts/migrate_option_library.py || true

@@ -664,7 +664,7 @@ def receipt_pdf(token: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404)
     pdf = build_receipt(order, get_settings(db))
     if pdf is None:
-        raise HTTPException(status_code=503, detail="PDF-Beleg ist auf diesem Server nicht verfügbar")
+        raise HTTPException(status_code=503, detail="PDF-Beleg ist auf diesem Server noch nicht aktiv (fpdf2 fehlt im Python der App; deploy.sh neu ausführen)")
     return Response(
         pdf, media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="Beleg-Bestellung-{order.id}.pdf"', "X-Robots-Tag": "noindex"},

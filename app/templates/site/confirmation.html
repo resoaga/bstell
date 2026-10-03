@@ -22,11 +22,11 @@
   {% if order.delivery_address %}<p class="hint">Lieferadresse: {{ order.delivery_address }}, {{ order.customer_zip }} {{ order.customer_city }}</p>
   {% elif order.order_type.value == "pickup" and settings.address_street %}<p class="hint">Abholung bei: {{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</p>{% endif %}
 
-  <ul class="options">
+  <ul class="lines">
     {% for line in order.items %}
     <li>
-      {{ line.quantity }}× {{ line.item_name }}{{ " (" + line.options_summary + ")" if line.options_summary else "" }}
-      <span>CHF {{ "%.2f"|format(line.unit_price * line.quantity) }}</span>
+      <div class="lines-main"><strong>{{ line.quantity }}× {{ line.item_name }}</strong>{% if line.options_summary %}<small>{{ line.options_summary }}</small>{% endif %}</div>
+      <span class="lines-price">CHF {{ "%.2f"|format(line.unit_price * line.quantity) }}</span>
     </li>
     {% endfor %}
   </ul>

@@ -27,10 +27,12 @@
   {% elif order.status.value == "ready" %}
   <p><strong>{% if order.order_type.value == "pickup" %}Deine Bestellung kann abgeholt werden.{% else %}Deine Bestellung ist fertig und geht gleich raus.{% endif %}</strong></p>
   {% endif %}
-  <ul class="options">
+  <ul class="lines">
     {% for line in order.items %}
-    <li>{{ line.quantity }}× {{ line.item_name }}{{ " (" + line.options_summary + ")" if line.options_summary else "" }}
-      <span>CHF {{ "%.2f"|format(line.unit_price * line.quantity) }}</span></li>
+    <li>
+      <div class="lines-main"><strong>{{ line.quantity }}× {{ line.item_name }}</strong>{% if line.options_summary %}<small>{{ line.options_summary }}</small>{% endif %}</div>
+      <span class="lines-price">CHF {{ "%.2f"|format(line.unit_price * line.quantity) }}</span>
+    </li>
     {% endfor %}
   </ul>
   {% if order.service_fee or order.delivery_fee_paid %}
