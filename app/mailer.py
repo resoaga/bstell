@@ -3,7 +3,7 @@
 import smtplib
 import ssl
 from email.message import EmailMessage
-from email.utils import formataddr
+from email.utils import formataddr, formatdate, make_msgid
 
 from .database import SessionLocal
 from .repo import get_settings
@@ -25,6 +25,11 @@ def send_mail_result(to: str, subject: str, body: str):
         msg["Subject"] = subject
         msg["From"] = formataddr((s.smtp_from_name or "", s.smtp_from_email))
         msg["To"] = to
+        # Without these, SMTP submission to Postfix sends the mail without Date/Message-ID,
+        # which spam filters penalise.
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid(domain=(s.smtp_from_email.split("@")[-1] or None))
+        msg["Auto-Submitted"] = "auto-generated"
         if s.email and s.email.strip().lower() != (s.smtp_from_email or "").strip().lower():
             msg["Reply-To"] = s.email.strip()  # customers' answers go to the contact address
         msg.set_content(body)
