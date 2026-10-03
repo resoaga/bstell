@@ -1,5 +1,6 @@
 import os
 import re
+import xml.etree.ElementTree as ET
 import secrets
 import uuid
 from typing import List, Optional
@@ -39,21 +40,41 @@ LOGO_SIGNATURES = [
 ]
 
 
-SVG_FORBIDDEN = re.compile(
-    rb"<\s*(script|foreignObject|iframe|object|embed|use|image|a)[\s>/]"
-    rb"|\son\w+\s*="
-    rb"|javascript:|data:text/html|<!ENTITY|<!DOCTYPE[^>]*\[|(?:xlink:)?href\s*=\s*[\"']\s*(?!#)",
-    re.IGNORECASE,
-)
+SVG_NS = "{http://www.w3.org/2000/svg}"
+SVG_TAGS = {
+    "svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+    "defs", "lineargradient", "radialgradient", "stop", "clippath", "mask", "title",
+    "desc", "text", "tspan", "style",
+}
+SVG_ATTR_BAD_VALUE = re.compile(r"javascript:|data:|expression\(|@import|url\(\s*[\"']?\s*(?!#)", re.I)
 
 
 def is_safe_svg(data: bytes) -> bool:
-    if len(data) > 200_000:
+    """Allowlist check: only plain drawing elements, no scripts, handlers or external refs."""
+    if len(data) > 200_000 or b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
         return False
-    head = data[:2000].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
-    if not (head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in data[:2000].lower())):
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
         return False
-    return SVG_FORBIDDEN.search(data) is None
+    if root.tag != SVG_NS + "svg":
+        return False
+    for el in root.iter():
+        if not isinstance(el.tag, str) or not el.tag.startswith(SVG_NS):
+            return False
+        if el.tag[len(SVG_NS):].lower() not in SVG_TAGS:
+            return False
+        if el.tag.endswith("style") and el.text and SVG_ATTR_BAD_VALUE.search(el.text):
+            return False
+        for name, value in el.attrib.items():
+            local = name.rsplit("}", 1)[-1].lower()
+            if local.startswith("on"):
+                return False
+            if local == "href" and not value.startswith("#"):
+                return False
+            if SVG_ATTR_BAD_VALUE.search(value):
+                return False
+    return True
 
 
 def detect_logo_extension(data: bytes) -> Optional[str]:
