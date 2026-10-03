@@ -93,8 +93,11 @@ def resolve_cart_lines(request: Request, db: Session):
 
 
 def service_fee_for(settings, goods_total: float) -> float:
-    """Percentage surcharge on the goods total, computed from the settings (never
-    from anything the browser sends). 0 when the feature is off."""
+    """Surcharge on every order (cash and card alike): either a percentage of the
+    goods total or a fixed amount. Computed from the settings only, never from
+    anything the browser sends; 0 when off or the cart is empty. No VAT is added."""
     if not settings.service_fee_enabled or goods_total <= 0:
         return 0.0
+    if settings.service_fee_mode == "fixed":
+        return round(settings.service_fee_fixed or 0.0, 2)
     return round(goods_total * (settings.service_fee_percent or 0.0) / 100.0 + 1e-9, 2)

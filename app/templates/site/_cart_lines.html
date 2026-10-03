@@ -40,7 +40,7 @@
 </ul>
 {% if service_fee %}
 <p class="cart-sub">Zwischensumme <span>CHF {{ "%.2f"|format(total) }}</span></p>
-<p class="cart-sub">{{ settings.service_fee_label }} ({{ "%g"|format(settings.service_fee_percent) }} %) <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
+<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode != "fixed" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
 {% endif %}
 <p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
 {% if not below_minimum %}<a class="btn-primary btn-block" href="/kasse">Zur Kasse</a>{% endif %}

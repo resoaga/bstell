@@ -220,9 +220,11 @@ class RestaurantSettings(Base):
     delivery_enabled = Column(Boolean, default=True)
     minimum_order_value = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
-    # Optional percentage surcharge on the goods total (e.g. to pass card fees on to the buyer)
+    # Optional surcharge for every order: a percentage of the goods total or a fixed amount
     service_fee_enabled = Column(Boolean, default=False, nullable=False)
+    service_fee_mode = Column(String, default="percent")  # "percent" | "fixed"
     service_fee_percent = Column(Float, default=2.0)
+    service_fee_fixed = Column(Float, default=0.0)
     service_fee_label = Column(String, default="Servicegebühr")
 
     delivery_zone_center = Column(String, default="")

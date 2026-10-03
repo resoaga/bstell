@@ -698,13 +698,19 @@ def update_ordering_settings(
     minimum_order_value: float = Form(0.0),
     delivery_fee: float = Form(0.0),
     service_fee_enabled: bool = Form(False),
-    service_fee_percent: float = Form(2.0),
+    service_fee_mode: str = Form("percent"),
+    service_fee_value: float = Form(0.0),
     service_fee_label: str = Form("Servicegebühr"),
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
     settings.service_fee_enabled = service_fee_enabled
-    settings.service_fee_percent = max(0.0, min(service_fee_percent, 20.0))
+    if service_fee_mode == "fixed":
+        settings.service_fee_mode = "fixed"
+        settings.service_fee_fixed = max(0.0, min(service_fee_value, 50.0))
+    else:
+        settings.service_fee_mode = "percent"
+        settings.service_fee_percent = max(0.0, min(service_fee_value, 20.0))
     settings.service_fee_label = service_fee_label.strip() or "Servicegebühr"
     settings.accepting_orders = accepting_orders
     settings.pickup_enabled = pickup_enabled
