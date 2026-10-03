@@ -1,3 +1,4 @@
+import io
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -89,13 +90,40 @@ def detect_logo_extension(data: bytes) -> Optional[str]:
     return None
 
 
-async def save_uploaded_image(upload: UploadFile, prefix: str) -> str:
+def shrink_to_webp(data: bytes, max_side: int) -> Optional[bytes]:
+    """Rotates per EXIF, scales down to max_side and re-encodes as WebP so phone
+    photos (several MB) become ~50 KB. Returns None if Pillow is missing or the
+    file can't be processed - the caller then stores the original unchanged."""
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return None
+    try:
+        Image.MAX_IMAGE_PIXELS = 50_000_000
+        with Image.open(io.BytesIO(data)) as img:
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((max_side, max_side), Image.LANCZOS)
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGBA" if "transparency" in img.info else "RGB")
+            out = io.BytesIO()
+            img.save(out, "WEBP", quality=80, method=6)
+            return out.getvalue()
+    except Exception:
+        return None
+
+
+async def save_uploaded_image(upload: UploadFile, prefix: str, max_side: Optional[int] = None) -> str:
     data = await upload.read()
     extension = detect_logo_extension(data)
     if extension is None:
         raise HTTPException(
             status_code=400, detail="Bild muss ein PNG-, JPEG-, GIF-, WebP- oder (sicheres) SVG-Bild sein"
         )
+    # Photos are scaled down; logos (SVG/GIF/transparent PNG) are stored as uploaded.
+    if max_side and extension in (".jpg", ".png", ".webp"):
+        small = shrink_to_webp(data, max_side)
+        if small is not None and len(small) < len(data):
+            data, extension = small, ".webp"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = f"{prefix}-{uuid.uuid4().hex}{extension}"
     with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
@@ -205,7 +233,7 @@ async def create_item(
 ):
     item = MenuItem(name=name, description=description, price=price, category_id=category_id)
     if image is not None and image.filename:
-        item.image_filename = await save_uploaded_image(image, "item")
+        item.image_filename = await save_uploaded_image(image, "item", max_side=720)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -248,7 +276,7 @@ async def update_item(
     item.price = price
     item.category_id = category_id
     if image is not None and image.filename:
-        item.image_filename = await save_uploaded_image(image, "item")
+        item.image_filename = await save_uploaded_image(image, "item", max_side=720)
     db.commit()
     return RedirectResponse(url=f"/admin/items/{item_id}/edit", status_code=303)
 
@@ -624,7 +652,7 @@ async def update_website_settings(
     settings.rating_text = rating_text
     settings.accent_color = accent_color or "#c8102e"
     if hero_image is not None and hero_image.filename:
-        settings.hero_image_filename = await save_uploaded_image(hero_image, "hero")
+        settings.hero_image_filename = await save_uploaded_image(hero_image, "hero", max_side=1600)
     db.commit()
     return RedirectResponse(url="/admin/settings/website", status_code=303)
 

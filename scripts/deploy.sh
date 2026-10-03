@@ -6,6 +6,11 @@
 set -e
 cd "$(dirname "$0")/.."
 
+echo "== Python-Pakete (Pillow fuer Bildverkleinerung) =="
+python3 -m pip install --user -q "Pillow>=10,<12" || echo "Hinweis: pip-Installation fehlgeschlagen - Bilder werden dann unverkleinert gespeichert"
+
+python3 -c "import PIL; print('Pillow', PIL.__version__, 'OK')" || echo "Pillow nicht importierbar - bitte melden"
+
 echo "== DB-Migrationen =="
 python3 scripts/migrate_option_library.py || true
 python3 scripts/add_columns.py || true

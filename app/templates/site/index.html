@@ -81,7 +81,7 @@
     <div class="menu-card" data-name="{{ item.name|lower }}">
       <div class="menu-card-media">
         {% if item.image_filename %}
-        <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy">
+        <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" width="96" height="96" loading="lazy" decoding="async">
         {% else %}
         <div class="menu-card-placeholder" aria-hidden="true"></div>
         {% endif %}
