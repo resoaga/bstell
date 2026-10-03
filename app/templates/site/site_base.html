@@ -21,7 +21,7 @@
   <header class="site-header">
     <a class="site-logo" href="/">
       {% if settings.logo_filename %}
-      <img src="/static/uploads/{{ settings.logo_filename }}" alt="{{ settings.name }}">
+      <img src="/static/uploads/{{ settings.logo_filename }}" alt="{{ settings.name }}" height="40">
       {% else %}
       {{ settings.name or "Speisekarte" }}
       {% endif %}

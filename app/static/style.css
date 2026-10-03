@@ -336,7 +336,7 @@ body.site .site-logo {
   font-weight: 800;
   font-size: 18px;
 }
-body.site .site-logo img { max-height: 32px; display: block; }
+body.site .site-logo img { height: 40px; width: auto; max-width: 60vw; display: block; }
 body.site .site-nav { display: flex; gap: 16px; flex-wrap: wrap; }
 body.site .site-nav a { color: rgba(255, 255, 255, 0.88); text-decoration: none; font-size: 14px; font-weight: 600; }
 body.site .site-nav a:hover, body.site .site-nav a:active { color: #fff; text-decoration: underline; }

@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import uuid
 from typing import List, Optional
@@ -38,7 +39,26 @@ LOGO_SIGNATURES = [
 ]
 
 
+SVG_FORBIDDEN = re.compile(
+    rb"<\s*(script|foreignObject|iframe|object|embed|use|image|a)[\s>/]"
+    rb"|\son\w+\s*="
+    rb"|javascript:|data:text/html|<!ENTITY|<!DOCTYPE[^>]*\[|(?:xlink:)?href\s*=\s*[\"']\s*(?!#)",
+    re.IGNORECASE,
+)
+
+
+def is_safe_svg(data: bytes) -> bool:
+    if len(data) > 200_000:
+        return False
+    head = data[:2000].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    if not (head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in data[:2000].lower())):
+        return False
+    return SVG_FORBIDDEN.search(data) is None
+
+
 def detect_logo_extension(data: bytes) -> Optional[str]:
+    if is_safe_svg(data):
+        return ".svg"
     for signature, extension in LOGO_SIGNATURES:
         if data.startswith(signature):
             return extension
@@ -52,7 +72,7 @@ async def save_uploaded_image(upload: UploadFile, prefix: str) -> str:
     extension = detect_logo_extension(data)
     if extension is None:
         raise HTTPException(
-            status_code=400, detail="Bild muss ein PNG-, JPEG-, GIF- oder WebP-Bild sein"
+            status_code=400, detail="Bild muss ein PNG-, JPEG-, GIF-, WebP- oder (sicheres) SVG-Bild sein"
         )
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = f"{prefix}-{uuid.uuid4().hex}{extension}"
