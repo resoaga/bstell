@@ -5,7 +5,7 @@
 <section class="category">
   <div class="category-header">
     <h2>#{{ order.id }} — {{ order.customer_name }}</h2>
-    <span class="tag">{{ order.created_at.strftime("%d.%m. %H:%M") }}</span>
+    <span class="tag">{{ order.created_at|localtime("%d.%m. %H:%M") }}</span>
   </div>
   <p class="hint">
     {{ order.phone }}{{ " · " + order.delivery_address + ", " + order.customer_zip + " " + order.customer_city if order.delivery_address else "" }}

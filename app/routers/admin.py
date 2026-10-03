@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from .. import customer as cust
 from ..auth import require_admin, verify_same_origin
+from .. import timeutil
 from ..assets import css_version
 from ..database import get_db
 from ..models import (
@@ -137,6 +138,7 @@ async def save_uploaded_image(upload: UploadFile, prefix: str, max_side: Optiona
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["css_version"] = css_version
+timeutil.register(templates)
 mutating = [Depends(verify_same_origin)]
 
 ORDER_NEXT_STATUS = {

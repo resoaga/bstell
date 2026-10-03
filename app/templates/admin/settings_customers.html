@@ -15,7 +15,7 @@
       <strong>{{ customer.name }}</strong>
       <span class="price">{{ customer.phone }}</span>
       <p>{{ customer.address }}</p>
-      <p class="hint">{{ customer.order_count }} Bestellung(en) — zuletzt am {{ customer.last_order_at.strftime("%d.%m.%Y %H:%M") }}</p>
+      <p class="hint">{{ customer.order_count }} Bestellung(en) — zuletzt am {{ customer.last_order_at|localtime }}</p>
     </div>
   </div>
   {% else %}

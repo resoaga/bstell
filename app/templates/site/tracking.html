@@ -8,7 +8,7 @@
 
 {% macro order_card(order) %}
 <section class="category order-card">
-  <h2>Bestellung #{{ order.id }} <span class="order-date">{{ order.created_at.strftime("%d.%m.%Y %H:%M") }}</span></h2>
+  <h2>Bestellung #{{ order.id }} <span class="order-date">{{ order.created_at|localtime }}</span></h2>
   <p>
     <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_labels[order.order_type] }}</span>

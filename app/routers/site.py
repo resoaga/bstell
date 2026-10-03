@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from .. import cart as cart_lib
 from .. import availability
 from .. import customer as cust
+from .. import timeutil
 from ..assets import css_version
 from .. import orderflow, payrexx
 from ..mailer import mail_configured, send_mail
@@ -42,6 +43,7 @@ from ..repo import (
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["css_version"] = css_version
+timeutil.register(templates)
 
 ALLOWED_LEGAL_SLUGS = {slug for slug, _, _ in CONTENT_PAGE_DEFAULTS}
 
