@@ -14,6 +14,19 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY, same_site="
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
+class HeadAsGet:
+    """Monitors, crawlers and link previews send HEAD requests; the routes only
+    declare GET. Serve HEAD through the GET handler (the server drops the body)."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] == "HEAD":
+            scope = dict(scope, method="GET")
+        await self.inner(scope, receive, send)
+
+
 @app.middleware("http")
 async def static_caching(request, call_next):
     """Long browser caching for files whose URL changes when the content changes
@@ -40,3 +53,5 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(site.router)
 app.include_router(admin.router)
 app.include_router(api.router)
+
+app = HeadAsGet(app)
