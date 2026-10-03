@@ -13,14 +13,14 @@ def mail_configured(settings) -> bool:
     return bool(settings.smtp_host and settings.smtp_from_email)
 
 
-def send_mail(to: str, subject: str, body: str) -> bool:
+def send_mail_result(to: str, subject: str, body: str):
     """Sends a plain-text mail. Opens its own DB session so it can run as a
-    background task. Returns False (and never raises) on any failure."""
+    background task. Returns (ok, error_text) and never raises."""
     db = SessionLocal()
     try:
         s = get_settings(db)
         if not mail_configured(s):
-            return False
+            return False, "SMTP-Host oder Absender-E-Mail fehlt"
         msg = EmailMessage()
         msg["Subject"] = subject
         msg["From"] = formataddr((s.smtp_from_name or "", s.smtp_from_email))
@@ -39,9 +39,13 @@ def send_mail(to: str, subject: str, body: str) -> bool:
             if s.smtp_username:
                 server.login(s.smtp_username, s.smtp_password)
             server.send_message(msg)
-        return True
+        return True, ""
     except Exception as exc:  # network/auth errors must not break the request
         print(f"[mailer] Versand an {to} fehlgeschlagen: {exc}")
-        return False
+        return False, f"{type(exc).__name__}: {exc}"[:300]
     finally:
         db.close()
+
+
+def send_mail(to: str, subject: str, body: str) -> bool:
+    return send_mail_result(to, subject, body)[0]

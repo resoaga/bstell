@@ -854,19 +854,20 @@ def update_payment_settings(
 
 @router.post("/settings/email/test", dependencies=mutating)
 def send_test_mail(to: str = Form(""), db: Session = Depends(get_db)):
-    from ..mailer import mail_configured, send_mail
+    from urllib.parse import quote
+    from ..mailer import mail_configured, send_mail_result
     settings = get_settings(db)
     if not mail_configured(settings):
         return RedirectResponse(url="/admin/settings/email?test=missing", status_code=303)
-    ok = send_mail(to.strip(), "Test-E-Mail vom Bestellsystem", "Wenn du das liest, funktioniert der E-Mail-Versand.")
-    return RedirectResponse(url=f"/admin/settings/email?test={'ok' if ok else 'failed'}", status_code=303)
+    ok, error = send_mail_result(to.strip(), "Test-E-Mail vom Bestellsystem", "Wenn du das liest, funktioniert der E-Mail-Versand.")
+    return RedirectResponse(url=f"/admin/settings/email?test={'ok' if ok else 'failed'}&err={quote(error)}", status_code=303)
 
 
 @router.get("/settings/email")
 def settings_email(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_email.html",
-        {"request": request, "test": request.query_params.get("test"), **settings_context("email", db)}
+        {"request": request, "test": request.query_params.get("test"), "test_error": request.query_params.get("err", ""), **settings_context("email", db)}
     )
 
 
@@ -882,13 +883,14 @@ def update_email_settings(
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
-    settings.smtp_host = smtp_host
+    clean = lambda v: "" if v.strip().lower() in ("none", "null") else v.strip()
+    settings.smtp_host = clean(smtp_host)
     settings.smtp_port = smtp_port
-    settings.smtp_username = smtp_username
+    settings.smtp_username = clean(smtp_username)
     if smtp_password:
         settings.smtp_password = smtp_password
-    settings.smtp_from_email = smtp_from_email
-    settings.smtp_from_name = smtp_from_name
+    settings.smtp_from_email = clean(smtp_from_email)
+    settings.smtp_from_name = clean(smtp_from_name)
     settings.send_order_confirmation = send_order_confirmation
     db.commit()
     return RedirectResponse(url="/admin/settings/email", status_code=303)

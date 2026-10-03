@@ -10,22 +10,22 @@
   </p>
   <form method="post" action="/admin/settings/email">
     <label>SMTP-Host
-      <input type="text" name="smtp_host" value="{{ settings.smtp_host }}" placeholder="z.B. smtp.gmail.com">
+      <input type="text" name="smtp_host" value="{{ settings.smtp_host or '' }}" placeholder="z.B. mail.deinedomain.ch">
     </label>
-    <label>SMTP-Port
-      <input type="number" name="smtp_port" value="{{ settings.smtp_port }}">
+    <label>SMTP-Port (465 = verschlüsselt von Anfang an, 587 = STARTTLS)
+      <input type="number" name="smtp_port" value="{{ settings.smtp_port or 465 }}">
     </label>
     <label>Benutzername
-      <input type="text" name="smtp_username" value="{{ settings.smtp_username }}">
+      <input type="text" name="smtp_username" value="{{ settings.smtp_username or '' }}">
     </label>
     <label>Passwort
       <input type="password" name="smtp_password" placeholder="{{ 'unverändert lassen, um bestehendes Passwort zu behalten' if settings.smtp_password else '' }}">
     </label>
     <label>Absender-E-Mail
-      <input type="email" name="smtp_from_email" value="{{ settings.smtp_from_email }}">
+      <input type="email" name="smtp_from_email" value="{{ settings.smtp_from_email or '' }}">
     </label>
     <label>Absender-Name
-      <input type="text" name="smtp_from_name" value="{{ settings.smtp_from_name }}" placeholder="z.B. Nergele Kebab">
+      <input type="text" name="smtp_from_name" value="{{ settings.smtp_from_name or '' }}" placeholder="z.B. Nergele Kebab">
     </label>
     <label class="checkbox-label">
       <input type="checkbox" name="send_order_confirmation" value="true" {{ "checked" if settings.send_order_confirmation else "" }}>
@@ -39,7 +39,7 @@
   <h2>Test-E-Mail</h2>
   <p class="hint">Erst speichern, dann hier eine Test-Mail an dich schicken. Kommt sie nicht an: Spam-Ordner prüfen, Zugangsdaten kontrollieren, und SPF/DKIM der Domain einrichten.</p>
   {% if test == "ok" %}<p class="notice ok">Versendet. Bitte Postfach (und Spam) prüfen.</p>
-  {% elif test == "failed" %}<p class="notice">Versand fehlgeschlagen. Details stehen im Server-Log (Zeile „[mailer]“).</p>
+  {% elif test == "failed" %}<p class="notice">Versand fehlgeschlagen: <code>{{ test_error }}</code></p>
   {% elif test == "missing" %}<p class="notice">Bitte zuerst SMTP-Host und Absender-E-Mail speichern.</p>{% endif %}
   <form method="post" action="/admin/settings/email/test">
     <label>Senden an
