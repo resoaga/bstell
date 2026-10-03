@@ -20,6 +20,8 @@ COLUMNS = [
     ("menu_items", "sold_out_until", "DATETIME"),
     ("restaurant_settings", "online_payment_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
     ("restaurant_settings", "footer_credit", "VARCHAR DEFAULT ''"),
+    ("restaurant_settings", "vat_number", "VARCHAR DEFAULT ''"),
+    ("restaurant_settings", "attach_receipt_pdf", "BOOLEAN NOT NULL DEFAULT 0"),
     ("orders", "customer_city", "VARCHAR DEFAULT ''"),
     ("orders", "payment_method", "VARCHAR DEFAULT 'cash'"),
     ("orders", "payrexx_gateway_id", "VARCHAR DEFAULT ''"),

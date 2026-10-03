@@ -13,7 +13,7 @@ def mail_configured(settings) -> bool:
     return bool(settings.smtp_host and settings.smtp_from_email)
 
 
-def send_mail_result(to: str, subject: str, body: str, html: str = None):
+def send_mail_result(to: str, subject: str, body: str, html: str = None, attachments=None):
     """Sends a plain-text mail. Opens its own DB session so it can run as a
     background task. Returns (ok, error_text) and never raises."""
     db = SessionLocal()
@@ -35,6 +35,9 @@ def send_mail_result(to: str, subject: str, body: str, html: str = None):
         msg.set_content(body)
         if html:
             msg.add_alternative(html, subtype="html")
+        for filename, data, mime in attachments or []:
+            maintype, subtype = mime.split("/", 1)
+            msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
         port = s.smtp_port or 587
         context = ssl.create_default_context()
         if port == 465:
@@ -54,5 +57,5 @@ def send_mail_result(to: str, subject: str, body: str, html: str = None):
         db.close()
 
 
-def send_mail(to: str, subject: str, body: str, html: str = None) -> bool:
-    return send_mail_result(to, subject, body, html)[0]
+def send_mail(to: str, subject: str, body: str, html: str = None, attachments=None) -> bool:
+    return send_mail_result(to, subject, body, html, attachments)[0]

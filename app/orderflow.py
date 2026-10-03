@@ -39,10 +39,18 @@ def phone_or_device_limit_reached(db: Session, phone: str, device_key: str) -> b
     )
 
 
+def _legal_links(db, base_url):
+    from .repo import get_all_content_pages
+
+    return [(page.title, f"{base_url}/rechtliches/{page.slug}") for page in get_all_content_pages(db) if page.body.strip()]
+
+
 def send_confirmation(order_id: int, base_url: str) -> None:
-    """Background task: plain-text confirmation with a link to follow the order."""
+    """Background task: confirmation e-mail (HTML + plain text, optional PDF receipt)."""
     from .database import SessionLocal
+    from .receipt import build_receipt
     from .repo import get_settings
+    from . import timeutil
 
     db = SessionLocal()
     try:
@@ -51,47 +59,82 @@ def send_confirmation(order_id: int, base_url: str) -> None:
         if order is None or not order.email or not settings.send_order_confirmation or not mail_configured(settings):
             return
         shop = settings.name or "unser Restaurant"
-        lines = [
-            f"{i.quantity}x {i.item_name}" + (f" ({i.options_summary})" if i.options_summary else "") + f"  CHF {i.unit_price * i.quantity:.2f}"
-            for i in order.items
-        ]
-        if order.service_fee:
-            lines.append(f"{settings.service_fee_label}  CHF {order.service_fee:.2f}")
-        if order.delivery_fee_paid:
-            lines.append(f"Lieferung  CHF {order.delivery_fee_paid:.2f}")
-        how = "Lieferung" if order.order_type == OrderType.delivery else "Abholung"
-        where = f"\nAdresse: {order.delivery_address}, {order.customer_zip} {order.customer_city}" if order.delivery_address else ""
-        pay = "online bezahlt" if order.payment_method == "online" else f"{PAYMENT_LABELS.get(order.payment_method, '')} bei Übergabe"
-        minutes = settings.estimated_delivery_minutes if order.order_type == OrderType.delivery else settings.estimated_pickup_minutes
-        body = (
-            f"Danke für deine Bestellung bei {shop}!\n\n"
-            f"Bestellung #{order.id} ({how}, {pay}){where}\n\n"
-            + "\n".join(lines)
-            + f"\n\nTotal: CHF {order.total:.2f} (inkl. MwSt.)\n\n"
-            f"Voraussichtlich in ca. {minutes} Minuten (unverbindlicher Richtwert).\n"
-            f"Bestellung verfolgen: {base_url}/verfolgen/{order.tracking_token}\n\n"
-            f"Fragen? {settings.phone or settings.email or ''}\n"
-        )
+        accent = settings.accent_color
         track = f"{base_url}/verfolgen/{order.tracking_token}"
-        table = [
-            (f"{i.quantity}× {i.item_name}" + (f" ({i.options_summary})" if i.options_summary else ""), f"CHF {i.unit_price * i.quantity:.2f}", False)
-            for i in order.items
-        ]
-        if order.service_fee:
-            table.append((settings.service_fee_label, f"CHF {order.service_fee:.2f}", False))
+        pdf_url = f"{base_url}/verfolgen/{order.tracking_token}/beleg.pdf"
+        delivery = order.order_type == OrderType.delivery
+        how = "Lieferung" if delivery else "Abholung"
+        if order.payment_method == "online":
+            pay, pay_sentence = "Online bezahlt", "Die Zahlung ist bei uns eingegangen."
+        elif order.payment_method == "card":
+            pay, pay_sentence = "Karte / Twint bei Übergabe", "Du bezahlst bei der Übergabe mit Karte oder Twint."
+        else:
+            pay, pay_sentence = "Bar bei Übergabe", "Du bezahlst bei der Übergabe bar."
+        where = f"{order.delivery_address}\n{order.customer_zip} {order.customer_city}" if order.delivery_address else ""
+        when = timeutil.fmt_local(order.created_at, "%d.%m.%Y, %H:%M Uhr")
+        contact_line = " · ".join(x for x in (settings.phone, settings.email) if x)
+
+        lines = [(i.item_name, i.options_summary or "", i.quantity, f"CHF {i.unit_price * i.quantity:.2f}") for i in order.items]
+        extra = []
         if order.delivery_fee_paid:
-            table.append(("Lieferung", f"CHF {order.delivery_fee_paid:.2f}", False))
-        table.append(("Total (inkl. MwSt.)", f"CHF {order.total:.2f}", True))
-        inner = (
-            f"<p>Danke für deine Bestellung! Sie ist bei uns eingegangen.</p>"
-            f"<p style=\"color:#6b6b6b;margin:0 0 8px;\">Bestellung #{int(order.id)} · {escape(how)} · {escape(pay)}</p>"
-            + (f"<p style=\"margin:0 0 8px;\">{escape(where.strip()).replace(chr(10), '<br>')}</p>" if where else "")
-            + mailhtml.rows(table)
-            + f"<p>Voraussichtlich in ca. <strong>{minutes} Minuten</strong> (unverbindlicher Richtwert).</p>"
-            + mailhtml.button(track, "Bestellung verfolgen", settings.accent_color)
+            extra.append(("Lieferung", f"CHF {order.delivery_fee_paid:.2f}"))
+        if order.service_fee:
+            extra.append((settings.service_fee_label or "Servicegebühr", f"CHF {order.service_fee:.2f}"))
+
+        # ---- HTML ----
+        body = (
+            mailhtml.paragraph(f"Hallo {order.customer_name},")
+            + mailhtml.paragraph(
+                f"vielen Dank für deine Bestellung bei {shop}! Wir haben sie erhalten und bereiten sie jetzt frisch für dich zu."
+            )
+            + mailhtml.paragraph(
+                "Den aktuellen Stand siehst du jederzeit über den Knopf unten. Falls sich bei dir etwas ändert, "
+                "ruf uns bitte so schnell wie möglich an, damit wir es noch berücksichtigen können.",
+            )
+            + mailhtml.info_box(
+                [("Bestellung", f"#{int(order.id)}"), ("Bestellt am", when), ("Art", how),
+                 ("Adresse" if delivery else "", where), ("Zahlung", pay)]
+            )
+            + mailhtml.order_lines(lines)
+            + mailhtml.totals(extra, "Total (inkl. MwSt.)", f"CHF {order.total:.2f}")
+            + mailhtml.paragraph(pay_sentence, muted=True)
+            + mailhtml.button(track, "Bestellung verfolgen", accent)
+            + f'<p style="margin:6px 0 0;font-size:13px;">{mailhtml.text_link(pdf_url, "Beleg als PDF herunterladen", accent)}</p>'
         )
-        footer = escape(f"Fragen? {settings.phone or ''} {settings.email or ''}".strip())
-        html = mailhtml.wrap(shop, settings.accent_color, f"Bestellung #{order.id}", inner, footer)
-        send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", body, html)
+        legal = " · ".join(mailhtml.text_link(u, t, "#7a746c") for t, u in _legal_links(db, base_url))
+        footer = (
+            (f"{escape(shop)}<br>" if shop else "")
+            + (f"{escape(contact_line)}<br>" if contact_line else "")
+            + (f"MWST-Nr.: {escape(settings.vat_number)}<br>" if settings.vat_number else "")
+            + (f"<br>{legal}<br>" if legal else "")
+            + "<br>Diese E-Mail wurde automatisch versendet."
+        )
+        html = mailhtml.wrap(shop, accent, "Danke für deine Bestellung!", body, footer, f"Bestellung #{order.id} ist bei uns eingegangen.")
+
+        # ---- plain text ----
+        text = [f"Hallo {order.customer_name},", "",
+                f"vielen Dank für deine Bestellung bei {shop}! Wir haben sie erhalten und bereiten sie jetzt frisch für dich zu.", "",
+                "Den aktuellen Stand siehst du jederzeit unter dem Link unten. Falls sich bei dir etwas ändert, ruf uns bitte so schnell wie möglich an.", "",
+                f"Bestellung #{order.id} vom {when}", f"{how} · {pay}"]
+        if where:
+            text.append(where.replace("\n", ", "))
+        text.append("")
+        for name, options, qty, amount in lines:
+            text.append(f"{qty}x {name}  {amount}")
+            if options:
+                text.append(f"   {options}")
+        text += [f"{label}  {amount}" for label, amount in extra]
+        text += ["", f"Total (inkl. MwSt.): CHF {order.total:.2f}", pay_sentence, "",
+                 f"Bestellung verfolgen: {track}", f"Beleg als PDF: {pdf_url}", ""]
+        text += [f"{t}: {u}" for t, u in _legal_links(db, base_url)]
+        if contact_line:
+            text += ["", contact_line]
+
+        attachments = None
+        if settings.attach_receipt_pdf:
+            pdf = build_receipt(order, settings)
+            if pdf:
+                attachments = [(f"Beleg-Bestellung-{order.id}.pdf", pdf, "application/pdf")]
+        send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", "\n".join(text), html, attachments)
     finally:
         db.close()

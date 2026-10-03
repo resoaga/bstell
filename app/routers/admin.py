@@ -606,6 +606,7 @@ async def update_general_settings(
     address_city: str = Form(""),
     phone: str = Form(""),
     email: str = Form(""),
+    vat_number: str = Form(""),
     logo: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -616,6 +617,7 @@ async def update_general_settings(
     settings.address_city = address_city
     settings.phone = phone
     settings.email = email
+    settings.vat_number = vat_number.strip()[:40]
     if logo is not None and logo.filename:
         settings.logo_filename = await save_uploaded_image(logo, "logo")
     db.commit()
@@ -882,9 +884,11 @@ def update_email_settings(
     smtp_from_email: str = Form(""),
     smtp_from_name: str = Form(""),
     send_order_confirmation: bool = Form(False),
+    attach_receipt_pdf: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
+    settings.attach_receipt_pdf = attach_receipt_pdf
     clean = lambda v: "" if v.strip().lower() in ("none", "null") else v.strip()
     settings.smtp_host = clean(smtp_host)
     settings.smtp_port = smtp_port

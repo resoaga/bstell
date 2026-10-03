@@ -31,6 +31,10 @@
       <input type="checkbox" name="send_order_confirmation" value="true" {{ "checked" if settings.send_order_confirmation else "" }}>
       Bestellbestätigung per E-Mail an Kunden senden
     </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="attach_receipt_pdf" value="true" {{ "checked" if settings.attach_receipt_pdf else "" }}>
+      Beleg zusätzlich als PDF an die Mail anhängen (der Download-Link steht immer drin)
+    </label>
     <button type="submit">Speichern</button>
   </form>
 </section>

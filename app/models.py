@@ -243,7 +243,9 @@ class RestaurantSettings(Base):
     address_zip = Column(String, default="")
     address_city = Column(String, default="")
     hours_note = Column(String, default="")
-    footer_credit = Column(String, default="")  # free text under the opening hours (e.g. special days)
+    footer_credit = Column(String, default="")
+    vat_number = Column(String, default="")  # UID / MWST-Nr., printed on the receipt when set
+    attach_receipt_pdf = Column(Boolean, default=False, nullable=False)  # free text under the opening hours (e.g. special days)
     phone = Column(String, default="")
     email = Column(String, default="")
 

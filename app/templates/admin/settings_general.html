@@ -24,6 +24,9 @@
     <label>E-Mail
       <input type="email" name="email" value="{{ settings.email }}">
     </label>
+    <label>MWST-Nr. / UID (optional, erscheint auf dem Beleg)
+      <input type="text" name="vat_number" value="{{ settings.vat_number or '' }}" placeholder="z.B. CHE-123.456.789 MWST" maxlength="40">
+    </label>
     <label>Logo
       {% if settings.logo_filename %}
       <img class="logo-preview" src="/static/uploads/{{ settings.logo_filename }}" alt="Aktuelles Logo">

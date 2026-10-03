@@ -655,6 +655,22 @@ def order_history(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/verfolgen/{token}/beleg.pdf")
+def receipt_pdf(token: str, db: Session = Depends(get_db)):
+    from ..receipt import build_receipt
+
+    order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
+    if order is None or order.status == OrderStatus.awaiting_payment:
+        raise HTTPException(status_code=404)
+    pdf = build_receipt(order, get_settings(db))
+    if pdf is None:
+        raise HTTPException(status_code=503, detail="PDF-Beleg ist auf diesem Server nicht verfügbar")
+    return Response(
+        pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="Beleg-Bestellung-{order.id}.pdf"', "X-Robots-Tag": "noindex"},
+    )
+
+
 @router.get("/verfolgen/{token}")
 def track_order(token: str, request: Request, db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
@@ -697,18 +713,27 @@ async def request_history_link(request: Request, background: BackgroundTasks, db
         )
         from html import escape as html_escape
         from .. import mailhtml
-        inner = (
-            "<p>Hier ist der gewünschte Link für Ihren Bestellverlauf:</p>"
-            + mailhtml.button(link, "Bestellverlauf öffnen", settings.accent_color)
-            + f"<p style=\"color:#6b6b6b;\">Der Link ist {cust.LINK_VALID_MINUTES} Minuten gültig und funktioniert nur einmal.</p>"
-        )
         contact = settings.email or settings.smtp_from_email
+        inner = (
+            mailhtml.paragraph("Guten Tag,")
+            + mailhtml.paragraph(
+                f"Sie haben den Link zu Ihrem Bestellverlauf bei {shop} angefordert. Mit einem Klick auf den Knopf sehen Sie "
+                "Ihre bisherigen Bestellungen auf diesem Gerät."
+            )
+            + mailhtml.button(link, "Bestellverlauf öffnen", settings.accent_color)
+            + mailhtml.paragraph(f"Der Link ist {cust.LINK_VALID_MINUTES} Minuten gültig und funktioniert nur einmal.", muted=True)
+        )
+        legal = " · ".join(
+            mailhtml.text_link(f"{cust.public_base_url(request)}/rechtliches/{p.slug}", p.title, "#7a746c")
+            for p in get_all_content_pages(db) if p.body.strip()
+        )
         footer = (
             "<strong>Sicherheitshinweis:</strong> Falls Sie diese E-Mail nicht angefordert haben - das kann auch aus Versehen "
             "passiert sein - müssen Sie nichts unternehmen. Ohne Klick auf den Link passiert nichts. Wenn das aber mehrmals "
             f"vorkommt, kontaktieren Sie bitte {html_escape(contact or '')}."
+            + (f"<br><br>{legal}" if legal else "")
         )
-        html = mailhtml.wrap(shop, settings.accent_color, "Ihr Bestellverlauf", inner, footer)
+        html = mailhtml.wrap(shop, settings.accent_color, "Ihr Bestellverlauf", inner, footer, "Ihr Link zum Bestellverlauf")
         background.add_task(send_mail, email, f"Ihr Bestellverlauf bei {shop}", body, html)
     # Same answer for every outcome, so nobody can probe which addresses are customers
     return RedirectResponse(url="/verfolgen?link=sent", status_code=303)

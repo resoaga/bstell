@@ -37,6 +37,7 @@
   {% endif %}
   <p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong> <small>inkl. MwSt.</small></p>
   <a class="btn-primary btn-block" href="/verfolgen/{{ order.tracking_token }}">Bestellung verfolgen</a>
+  <p class="thanks-note"><a class="text-link" href="/verfolgen/{{ order.tracking_token }}/beleg.pdf" target="_blank" rel="noopener">Beleg als PDF herunterladen</a></p>
   <p class="hint thanks-note">
     {% if settings.send_order_confirmation and settings.smtp_host and order.email %}Eine Bestätigung ist unterwegs an {{ order.email }}. {% endif %}
     Fragen? {% if settings.phone %}<a class="text-link" href="tel:{{ settings.phone | replace(' ', '') }}">{{ settings.phone }}</a>{% endif %}
