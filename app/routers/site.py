@@ -318,9 +318,9 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     delivery_address = (form.get("delivery_address") or "").strip()
     note = (form.get("note") or "").strip()
     if not customer_name or not phone or not customer_zip:
-        return error_response("Name, Telefonnummer und PLZ sind erforderlich.")
-    if email and ("@" not in email or "." not in email.split("@")[-1] or len(email) > 254):
-        return error_response("Bitte eine gültige E-Mail-Adresse angeben oder das Feld leer lassen.")
+        return error_response("Name, Telefonnummer, E-Mail und PLZ sind erforderlich.")
+    if not email or "@" not in email or "." not in email.split("@")[-1] or len(email) > 254:
+        return error_response("Bitte eine gültige E-Mail-Adresse angeben.")
 
     if settings.pickup_enabled and settings.delivery_enabled:
         order_type = OrderType.pickup if form.get("order_type") == "pickup" else OrderType.delivery
