@@ -6,16 +6,17 @@
 <section class="category">
   <h2>Kunden</h2>
   <p class="hint">
-    Für den Anfang aus den bestehenden Bestellungen abgeleitet (gruppiert nach Telefonnummer) — eine eigene
+    Für den Anfang aus den bestehenden Bestellungen abgeleitet (gruppiert nach Telefonnummer; Schreibweise wie „079 …“, „+41 79 …“ oder „0041 …“ zählt als dieselbe Nummer) — eine eigene
     Kunden-Tabelle mit fester Zuordnung kommt, sobald das Telefonsystem sie braucht.
   </p>
   {% for customer in customers %}
   <div class="item-card">
     <div class="item-info">
-      <strong>{{ customer.name }}</strong>
-      <span class="price">{{ customer.phone }}</span>
-      <p>{{ customer.address }}</p>
-      <p class="hint">{{ customer.order_count }} Bestellung(en) — zuletzt am {{ customer.last_order_at|localtime }}</p>
+      <strong>{{ customer.name }}</strong>{% if customer.other_names %} <span class="hint">(auch: {{ customer.other_names|join(", ") }})</span>{% endif %}
+      <span class="price"><a href="tel:{{ customer.phone|replace(' ', '') }}">{{ customer.phone }}</a></span>
+      {% if customer.emails %}<p>{{ customer.emails|join(", ") }}</p>{% endif %}
+      {% if customer.address %}<p>{{ customer.address }}</p>{% endif %}
+      <p class="hint">{{ customer.order_count }} Bestellung(en), zusammen CHF {{ "%.2f"|format(customer.total) }} — zuletzt am {{ customer.last_order_at|localtime }}</p>
     </div>
   </div>
   {% else %}

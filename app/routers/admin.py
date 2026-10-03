@@ -956,22 +956,41 @@ def update_email_settings(
     return RedirectResponse(url="/admin/settings/email", status_code=303)
 
 
+def _phone_key(phone: str, email: str = "") -> str:
+    """Same person = same phone number, however it was typed (spaces, +41, 0041)."""
+    digits = re.sub(r"\D", "", phone or "")
+    if digits.startswith("0041"):
+        digits = "0" + digits[4:]
+    elif digits.startswith("41") and len(digits) >= 11:
+        digits = "0" + digits[2:]
+    return digits or (email or "").strip().lower()
+
+
 @router.get("/settings/customers")
 def settings_customers(request: Request, db: Session = Depends(get_db)):
-    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    orders = db.query(Order).filter(Order.status != OrderStatus.awaiting_payment).order_by(Order.created_at.desc()).all()
     customers = {}
-    for order in orders:
+    for order in orders:  # newest first, so the first order seen carries the latest details
         entry = customers.setdefault(
-            order.phone,
+            _phone_key(order.phone, order.email),
             {
                 "name": order.customer_name,
+                "other_names": [],
                 "phone": order.phone,
+                "emails": [],
                 "address": order.delivery_address,
                 "order_count": 0,
+                "total": 0.0,
                 "last_order_at": order.created_at,
             },
         )
         entry["order_count"] += 1
+        if order.status != OrderStatus.cancelled:
+            entry["total"] += order.total
+        if order.customer_name != entry["name"] and order.customer_name not in entry["other_names"]:
+            entry["other_names"].append(order.customer_name)
+        if order.email and order.email.lower() not in entry["emails"]:
+            entry["emails"].append(order.email.lower())
     return templates.TemplateResponse(
         "admin/settings_customers.html",
         {
