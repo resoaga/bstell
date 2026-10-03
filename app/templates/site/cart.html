@@ -1,8 +1,9 @@
 {% extends "site/site_base.html" %}
+{% block title %}Warenkorb – {{ settings.name }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
 {% block content %}
 <h1 class="page-title">Warenkorb</h1>
 <div id="cart-lines">
   {% include "site/_cart_lines.html" %}
 </div>
-<a class="back-link" href="/speisekarte">← Weiter einkaufen</a>
 {% endblock %}

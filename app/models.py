@@ -256,7 +256,30 @@ class ContentPage(Base):
     body = Column(Text, default="")
 
 
+FAQ_DEFAULT_BODY = """## Wie bestelle ich?
+Wähle auf der Startseite deine Gerichte aus, lege sie in den Warenkorb und gehe zur Kasse. Dort gibst du Name, Telefonnummer, E-Mail und bei Lieferung deine Adresse an.
+
+## Wie lange dauert es bis zur Abholung oder Lieferung?
+Die Zeiten auf der Startseite sind Durchschnittswerte und unverbindlich. Bei grossem Andrang kann es länger dauern.
+
+## Wo sehe ich, wie weit meine Bestellung ist?
+Unter «Meine Bestellungen» im Menü oben. Auf demselben Handy erscheinen deine letzten Bestellungen automatisch. Auf einem anderen Gerät kannst du dir mit deiner E-Mail-Adresse einen Link schicken lassen.
+
+## Gibt es einen Mindestbestellwert?
+Falls ja, steht er im Warenkorb. Liegst du darunter, siehst du dort einen Hinweis.
+
+## Wie bezahle ich?
+Die möglichen Zahlungsarten siehst du an der Kasse.
+
+## Ich habe eine Allergie oder einen Sonderwunsch.
+Schreibe es bei der Bestellung in das Feld «Anmerkung» oder rufe uns kurz an.
+
+## Ich möchte meine Bestellung ändern oder stornieren.
+Bitte ruf uns so schnell wie möglich an. Sobald die Zubereitung begonnen hat, ist eine Änderung nicht mehr in jedem Fall möglich.
+"""
+
 CONTENT_PAGE_DEFAULTS = [
+    ("faq", "Häufige Fragen", FAQ_DEFAULT_BODY),
     ("datenschutz", "Datenschutz", ""),
     ("agb", "AGB", ""),
     ("widerruf", "Widerrufsrecht", ""),

@@ -1,12 +1,23 @@
 {% extends "site/site_base.html" %}
-{% block title %}{{ page.title }}{% endblock %}
+{% block title %}{{ page.title }} – {{ settings.name }}{% endblock %}
+{% block head_extra %}
+{% if faq_json %}<script type="application/ld+json">{{ faq_json | safe }}</script>{% endif %}
+{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ page.title }}</h1>
-{% if paragraphs %}
-{% for para in paragraphs %}
-<p>{{ para }}</p>
-{% endfor %}
-{% else %}
+{% for para in intro %}<p class="legal-intro">{{ para }}</p>{% endfor %}
+{% if sections %}
+<div class="accordion">
+  {% for heading, paras in sections %}
+  <details>
+    <summary>{{ heading }}</summary>
+    <div class="accordion-body">
+      {% for para in paras %}<p>{{ para }}</p>{% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% elif not intro %}
 <p class="empty">Noch kein Text hinterlegt.</p>
 {% endif %}
 {% endblock %}

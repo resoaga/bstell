@@ -3,6 +3,12 @@
 <h2>Einstellungen</h2>
 {% include "admin/_settings_nav.html" %}
 
+<p class="hint">
+  Aufbau: Eine Zeile, die mit <strong>##</strong> beginnt, wird auf der Webseite zur Überschrift zum Antippen
+  (z.&nbsp;B. <code>## Welche Daten speichern wir?</code>). Der Text darunter klappt erst beim Antippen auf.
+  Leere Zeile = neuer Absatz. Text ohne <strong>##</strong> wird ganz normal angezeigt. Beispiel:<br>
+  <code>## Frage oder Überschrift</code> (neue Zeile) <code>Antwort oder Text …</code>
+</p>
 {% for page in pages %}
 <section class="category">
   <h2>{{ page.title }}</h2>

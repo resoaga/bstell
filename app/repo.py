@@ -38,8 +38,8 @@ def get_settings(db: Session) -> RestaurantSettings:
 def get_content_page(db: Session, slug: str) -> ContentPage:
     page = db.query(ContentPage).filter(ContentPage.slug == slug).first()
     if page is None:
-        title = next((t for s, t, _ in CONTENT_PAGE_DEFAULTS if s == slug), slug)
-        page = ContentPage(slug=slug, title=title, body="")
+        title, body = next(((t, b) for s, t, b in CONTENT_PAGE_DEFAULTS if s == slug), (slug, ""))
+        page = ContentPage(slug=slug, title=title, body=body)
         db.add(page)
         db.commit()
         db.refresh(page)

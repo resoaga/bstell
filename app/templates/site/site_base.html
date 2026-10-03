@@ -45,7 +45,8 @@
       {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% endif %}
     </span>
     {% if settings.address_street %}
-    <span class="status-address">{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</span>
+    {% set maps_url = "https://www.google.com/maps/search/?api=1&query=" ~ ((settings.address_street ~ ", " ~ settings.address_zip ~ " " ~ settings.address_city) | urlencode) %}
+    <a class="status-address" href="{{ maps_url }}" target="_blank" rel="noopener" aria-label="Adresse in Google Maps öffnen">📍 {{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</a>
     {% endif %}
   </div>
 
@@ -66,7 +67,7 @@
     <main class="site-main">
       {% block content %}{% endblock %}
     </main>
-    {% include "site/_cart_sidebar.html" %}
+    {% if not hide_cart %}{% include "site/_cart_sidebar.html" %}{% endif %}
   </div>
 
   <footer class="site-footer">
@@ -78,8 +79,9 @@
       {% endif %}
     </div>
     <div class="site-footer-info">
-      {% if settings.address_street %}{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}<br>{% endif %}
-      {% if settings.phone %}Tel. {{ settings.phone }}{% endif %}
+      {% if settings.address_street %}<a href="{{ maps_url }}" target="_blank" rel="noopener">{{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</a>{% endif %}
+      {% if settings.phone %}<a href="tel:{{ settings.phone | replace(' ', '') | replace('(', '') | replace(')', '') }}">Tel. {{ settings.phone }}</a>{% endif %}
+      {% if settings.email %}<a href="mailto:{{ settings.email }}">{{ settings.email }}</a>{% endif %}
     </div>
     <ul class="site-footer-hours">
       {% for label, hours in footer_hours %}
@@ -95,6 +97,6 @@
     <p class="site-footer-credit">Website-Technik: <span class="footer-credit-placeholder">[Platzhalter – eigene Werbung]</span></p>
   </footer>
 
-  {% include "site/_cart_bar.html" %}
+  {% if not hide_cart %}{% include "site/_cart_bar.html" %}{% endif %}
 </body>
 </html>

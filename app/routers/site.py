@@ -211,6 +211,7 @@ def cart_page(request: Request, db: Session = Depends(get_db)):
         "site/cart.html",
         {
             "request": request,
+            "hide_cart": True,
             "lines": lines,
             "total": total,
             "below_minimum": total > 0 and total < settings.minimum_order_value,
@@ -272,6 +273,7 @@ def checkout_page(request: Request, db: Session = Depends(get_db)):
         "site/checkout.html",
         {
             "request": request,
+            "hide_cart": True,
             "lines": lines,
             "total": total,
             "below_minimum": total > 0 and total < settings.minimum_order_value,
@@ -292,6 +294,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
             "site/checkout.html",
             {
                 "request": request,
+                "hide_cart": True,
                 "lines": lines,
                 "total": total,
                 "below_minimum": total > 0 and total < settings.minimum_order_value,
@@ -510,13 +513,45 @@ async def history_login(request: Request, db: Session = Depends(get_db)):
     return response
 
 
+def parse_sections(body: str):
+    """Splits an editable text into (intro_paragraphs, [(heading, paragraphs)]).
+    A line starting with "## " opens a new collapsible section; everything
+    before the first one is the intro. Text without any "## " stays plain."""
+    intro, sections, current = [], [], None
+    for block in body.replace("\r\n", "\n").split("\n\n"):
+        block = block.strip()
+        if not block:
+            continue
+        lines = block.split("\n")
+        while lines and lines[0].startswith("## "):
+            current = (lines.pop(0)[3:].strip(), [])
+            sections.append(current)
+        rest = "\n".join(lines).strip()
+        if rest:
+            (current[1] if current else intro).append(rest)
+    return intro, sections
+
+
 @router.get("/rechtliches/{slug}")
 def legal_page(slug: str, request: Request, db: Session = Depends(get_db)):
     if slug not in ALLOWED_LEGAL_SLUGS:
         raise HTTPException(status_code=404)
     page = get_content_page(db, slug)
-    paragraphs = [p.strip() for p in page.body.split("\n\n") if p.strip()]
+    intro, sections = parse_sections(page.body)
+    faq_json = None
+    if slug == "faq" and sections:
+        faq_json = json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": " ".join(a)}}
+                    for q, a in sections
+                ],
+            },
+            ensure_ascii=False,
+        ).replace("</", "<\\/")
     return templates.TemplateResponse(
         "site/legal.html",
-        {"request": request, "page": page, "paragraphs": paragraphs, **site_extra(request, db)},
+        {"request": request, "page": page, "intro": intro, "sections": sections, "faq_json": faq_json, **site_extra(request, db)},
     )
