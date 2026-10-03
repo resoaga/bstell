@@ -12,12 +12,15 @@ from .. import cart as cart_lib
 from .. import availability
 from .. import customer as cust
 from ..assets import css_version
+from .. import payrexx
 from ..mailer import mail_configured, send_mail
 from ..database import get_db
 from ..models import (
     CONTENT_PAGE_DEFAULTS,
     ORDER_STATUS_LABELS,
+    PAYMENT_HINTS,
     PAYMENT_LABELS,
+    OrderStatus,
     ORDER_TYPE_LABELS,
     WEEKDAY_LABELS,
     Category,
@@ -331,7 +334,9 @@ def checkout_context(request: Request, db: Session, contact: dict, **extra) -> d
         "below_minimum": total > 0 and total < settings.minimum_order_value,
         "contact": contact,
         "zips": allowed_zips(settings),
-        "payment_labels": PAYMENT_LABELS,
+        "payment_options": [
+            (k, v, PAYMENT_HINTS[k]) for k, v in PAYMENT_LABELS.items() if k != "online" or payrexx.configured(settings)
+        ],
         **extra,
         **site_extra(request, db),
     }
@@ -379,6 +384,8 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     delivery_address = (form.get("delivery_address") or "").strip()[:120]
     note = (form.get("note") or "").strip()[:500]
     payment = form.get("payment") if form.get("payment") in PAYMENT_LABELS else ""
+    if payment == "online" and not payrexx.configured(settings):
+        payment = ""
     if not customer_name or not phone:
         return error_response("Bitte Name und Telefonnummer angeben.")
     if not email or "@" not in email or "." not in email.split("@")[-1] or len(email) > 254:
@@ -412,6 +419,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         customer_zip=customer_zip,
         customer_city=customer_city,
         payment_method=payment,
+        status=OrderStatus.awaiting_payment if payment == "online" else OrderStatus.received,
         email=email,
         device_key=device_key,
         tracking_token=cust.new_tracking_token(),
@@ -433,13 +441,105 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     db.add(order)
     db.commit()
     db.refresh(order)
-    cart_lib.clear_cart(request)
     request.session["placed_order_ids"] = request.session.get("placed_order_ids", []) + [order.id]
 
-    response = RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
+    if payment == "online":
+        # The order only reaches the kitchen once Payrexx confirms the payment.
+        try:
+            gateway = payrexx.create_gateway(settings, order, cust.public_base_url(request))
+        except payrexx.PayrexxError as exc:
+            print(f"[payrexx] Gateway fehlgeschlagen für Bestellung {order.id}: {exc}")
+            order.status = OrderStatus.cancelled
+            db.commit()
+            return error_response("Die Online-Zahlung ist gerade nicht verfügbar. Bitte Bar oder Karte bei Übergabe wählen.")
+        order.payrexx_gateway_id = str(gateway["id"])
+        db.commit()
+        response = RedirectResponse(url=gateway["link"], status_code=303)
+    else:
+        cart_lib.clear_cart(request)
+        response = RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
     cust.set_identity_cookie(request, response, device_key, identity["e"])
     response.delete_cookie("kontakt")  # legacy cookie from the old checkout
     return response
+
+
+def _settle_online_order(db: Session, order: Order) -> str:
+    """Re-reads the payment from Payrexx and updates the order. Returns paid | pending | failed."""
+    if order.status != OrderStatus.awaiting_payment:
+        return "paid" if order.status != OrderStatus.cancelled else "failed"
+    try:
+        state = payrexx.gateway_state(get_settings(db), order)
+    except payrexx.PayrexxError as exc:
+        print(f"[payrexx] Statusabfrage Bestellung {order.id}: {exc}")
+        return "pending"
+    if state == "paid":
+        order.status = OrderStatus.received
+        db.commit()
+    return state
+
+
+@router.get("/bestellung/{token}/zahlung")
+def payment_return(token: str, request: Request, r: str = "ok", db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
+    if order is None or order.payment_method != "online":
+        raise HTTPException(status_code=404)
+    state = _settle_online_order(db, order)
+    if state == "paid":
+        cart_lib.clear_cart(request)
+        request.session["placed_order_ids"] = request.session.get("placed_order_ids", []) + [order.id]
+        return RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
+    return templates.TemplateResponse(
+        "site/payment_status.html",
+        {"request": request, "order": order, "state": state if r == "ok" else "failed", "r": r, **site_extra(request, db)},
+    )
+
+
+@router.post("/bestellung/{token}/zahlung/neu")
+def payment_retry(token: str, request: Request, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
+    if order is None or order.status != OrderStatus.awaiting_payment:
+        raise HTTPException(status_code=404)
+    try:
+        gateway = payrexx.create_gateway(get_settings(db), order, cust.public_base_url(request))
+    except payrexx.PayrexxError:
+        return RedirectResponse(url=f"/bestellung/{token}/zahlung?r=failed", status_code=303)
+    order.payrexx_gateway_id = str(gateway["id"])
+    db.commit()
+    return RedirectResponse(url=gateway["link"], status_code=303)
+
+
+def _find_reference(node):
+    """Looks for a referenceId like 'order-123' anywhere in the webhook payload."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "referenceId" and isinstance(value, str) and re.fullmatch(r"order-\d+", value):
+                return value
+            found = _find_reference(value)
+            if found:
+                return found
+    elif isinstance(node, list):
+        for value in node:
+            found = _find_reference(value)
+            if found:
+                return found
+    return None
+
+
+@router.post("/payrexx/webhook")
+async def payrexx_webhook(request: Request, db: Session = Depends(get_db)):
+    """Payrexx calls this on payment events. The payload is NOT trusted (webhooks
+    are unsigned): it only tells us which order to re-check against the API."""
+    body = await request.body()
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        payload = {k: v for k, v in (await request.form()).items()}
+    reference = _find_reference(payload)
+    if reference:
+        order = db.get(Order, int(reference.split("-")[1]))
+        if order is not None and order.payment_method == "online":
+            _settle_online_order(db, order)
+    return {"ok": True}
 
 
 @router.get("/bestellung/{order_id}/bestaetigung")

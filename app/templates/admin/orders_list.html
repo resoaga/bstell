@@ -9,7 +9,7 @@
   </div>
   <p class="hint">
     {{ order.phone }}{{ " · " + order.delivery_address + ", " + order.customer_zip + " " + order.customer_city if order.delivery_address else "" }}
-    · {{ payment_labels.get(order.payment_method, "") }} bei Übergabe
+    · <strong>{% if order.payment_method == "online" %}ONLINE BEZAHLT{% else %}{{ payment_labels.get(order.payment_method, "")|upper }} bei Übergabe{% endif %}</strong>
   </p>
   <ul class="options">
     {% for line in order.items %}

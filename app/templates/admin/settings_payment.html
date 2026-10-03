@@ -6,8 +6,10 @@
 <section class="category">
   <h2>Zahlungsdienstleister</h2>
   <p class="hint">
-    Zugangsdaten für Payrexx. Der Bezahlstatus pro Bestellung (bezahlt / storniert / fehlgeschlagen) erscheint hier,
-    sobald die eigentliche Payrexx-Anbindung gebaut ist — heute nur die Zugangsdaten.
+    Zugangsdaten für Payrexx. Sobald Instanz und API-Key gesetzt sind, erscheint an der Kasse „Online bezahlen“.
+    Die Bestellung kommt erst in die Küche, wenn Payrexx die Zahlung bestätigt hat.
+    <br><strong>Webhook in Payrexx eintragen</strong> (Einstellungen → API → Webhooks, Typ Transaktion):
+    <code>{{ webhook_url }}</code> — optional, aber empfohlen: ohne Webhook wird die Zahlung erst geprüft, wenn der Kunde auf die Webseite zurückkehrt.
   </p>
   <form method="post" action="/admin/settings/payment">
     <label>Payrexx-Instanz

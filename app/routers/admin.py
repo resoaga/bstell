@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from .. import customer as cust
 from ..auth import require_admin, verify_same_origin
 from ..assets import css_version
 from ..database import get_db
@@ -547,7 +548,7 @@ def link_requests(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/orders")
 def orders_list(request: Request, db: Session = Depends(get_db)):
-    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    orders = db.query(Order).filter(Order.status != OrderStatus.awaiting_payment).order_by(Order.created_at.desc()).all()
     return templates.TemplateResponse(
         "admin/orders_list.html",
         {"request": request, "orders": orders, "payment_labels": PAYMENT_LABELS, **ORDER_TEMPLATE_EXTRAS},
@@ -830,7 +831,8 @@ def update_delivery_zips(delivery_zips: str = Form(""), db: Session = Depends(ge
 @router.get("/settings/payment")
 def settings_payment(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
-        "admin/settings_payment.html", {"request": request, **settings_context("payment", db)}
+        "admin/settings_payment.html",
+        {"request": request, "webhook_url": cust.public_base_url(request) + "/payrexx/webhook", **settings_context("payment", db)},
     )
 
 

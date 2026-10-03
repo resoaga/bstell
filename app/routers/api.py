@@ -137,7 +137,8 @@ def _order_json(order: Order) -> dict:
         "address": order.delivery_address,
         "zip": order.customer_zip,
         "city": order.customer_city,
-        "payment": order.payment_method,
+        "payment": order.payment_method,  # cash | card (collect at handover) | online (already paid)
+        "paid": order.payment_method == "online",
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
@@ -154,7 +155,7 @@ def list_orders(since_id: int = 0, db: Session = Depends(get_db)):
     open_states = [OrderStatus.received, OrderStatus.preparing, OrderStatus.ready]
     orders = (
         db.query(Order)
-        .filter((Order.status.in_(open_states)) | (Order.id > since_id))
+        .filter(((Order.status.in_(open_states)) | (Order.id > since_id)) & (Order.status != OrderStatus.awaiting_payment))
         .order_by(Order.id)
         .all()
     )

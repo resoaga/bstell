@@ -20,6 +20,7 @@ COLUMNS = [
     ("menu_items", "sold_out_until", "DATETIME"),
     ("orders", "customer_city", "VARCHAR DEFAULT ''"),
     ("orders", "payment_method", "VARCHAR DEFAULT 'cash'"),
+    ("orders", "payrexx_gateway_id", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "delivery_zips", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "preorder_minutes", "INTEGER DEFAULT 60"),
     ("orders", "email", "VARCHAR DEFAULT ''"),

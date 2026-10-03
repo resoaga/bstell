@@ -9,7 +9,7 @@
 
 {% set both_types = settings.pickup_enabled and settings.delivery_enabled %}
 {% set is_delivery = (contact.order_type == "delivery") if contact.order_type else (not settings.pickup_enabled or both_types) %}
-{% set pay = contact.payment or "cash" %}
+{% set pay = contact.payment or payment_options[0][0] %}
 
 <form method="post" action="/kasse" class="checkout" id="checkout-form"
       data-total="{{ total + service_fee }}" data-delivery-fee="{{ settings.delivery_fee or 0 }}"
@@ -63,8 +63,8 @@
   </div>
 
   <div class="co-seg co-pay" role="radiogroup" aria-label="Zahlungsart">
-    {% for key, label in payment_labels.items() %}
-    <label><input type="radio" name="payment" value="{{ key }}" {{ "checked" if pay == key else "" }}><span>{{ label }}<small>bei Übergabe</small></span></label>
+    {% for key, label, hint in payment_options %}
+    <label><input type="radio" name="payment" value="{{ key }}" {{ "checked" if pay == key else "" }}><span>{{ label }}<small>{{ hint }}</small></span></label>
     {% endfor %}
   </div>
 
@@ -73,7 +73,7 @@
     <textarea name="note" rows="2" maxlength="500" placeholder="z.B. Allergien, Klingel defekt …">{{ contact.note or '' }}</textarea>
   </details>
 
-  <button type="submit" class="btn-primary btn-block" id="co-submit">Bestellen · <span id="co-btn-total">CHF {{ "%.2f"|format(total + service_fee + (settings.delivery_fee or 0 if is_delivery else 0)) }}</span></button>
+  <button type="submit" class="btn-primary btn-block" id="co-submit"><span id="co-btn-label">Bestellen</span> · <span id="co-btn-total">CHF {{ "%.2f"|format(total + service_fee + (settings.delivery_fee or 0 if is_delivery else 0)) }}</span></button>
   <p class="hint co-hint">Preise inkl. MwSt.</p>
 </form>
 
@@ -99,6 +99,12 @@
     hint.hidden = !bad;
     submit.disabled = !!bad;
   }
+  function label() {
+    var p = form.querySelector('input[name=payment]:checked');
+    document.getElementById('co-btn-label').textContent = p && p.value === 'online' ? 'Weiter zur Zahlung' : 'Bestellen';
+  }
+  form.addEventListener('change', label);
+  label();
   form.addEventListener('change', refresh);
   zipInput.addEventListener('input', refresh);
   refresh();

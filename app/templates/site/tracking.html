@@ -13,7 +13,9 @@
     <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_labels[order.order_type] }}</span>
   </p>
-  {% if order.status.value != "cancelled" %}
+  {% if order.status.value == "awaiting_payment" %}
+  <p class="notice">Die Zahlung ist noch nicht abgeschlossen. <a class="text-link" href="/bestellung/{{ order.tracking_token }}/zahlung">Zahlung prüfen / erneut bezahlen</a></p>
+  {% elif order.status.value != "cancelled" %}
   {% set steps = ["Eingegangen", "In Zubereitung", ("Unterwegs" if order.order_type.value == "delivery" else "Abholbereit"), "Abgeschlossen"] %}
   {% set idx = ["received", "preparing", "ready", "completed"].index(order.status.value) %}
   <ol class="progress" aria-label="Fortschritt">

@@ -13,6 +13,7 @@ class SelectionType(str, enum.Enum):
 
 
 class OrderStatus(str, enum.Enum):
+    awaiting_payment = "awaiting_payment"  # online payment started, not yet confirmed - hidden from the kitchen
     received = "received"
     preparing = "preparing"
     ready = "ready"
@@ -26,8 +27,14 @@ class OrderType(str, enum.Enum):
 
 
 PAYMENT_LABELS = {
-    "cash": "Barzahlung",
-    "card": "Kartenzahlung",
+    "online": "Online bezahlen",
+    "cash": "Bar",
+    "card": "Karte / Twint",
+}
+PAYMENT_HINTS = {
+    "online": "Karte, Twint …",
+    "cash": "bei Übergabe",
+    "card": "bei Übergabe",
 }
 
 ORDER_TYPE_LABELS = {
@@ -37,6 +44,7 @@ ORDER_TYPE_LABELS = {
 
 
 ORDER_STATUS_LABELS = {
+    OrderStatus.awaiting_payment: "Zahlung ausstehend",
     OrderStatus.received: "Neu",
     OrderStatus.preparing: "In Zubereitung",
     OrderStatus.ready: "Fertig",
@@ -146,7 +154,8 @@ class Order(Base):
     phone = Column(String, nullable=False)
     customer_zip = Column(String, default="")
     customer_city = Column(String, default="")
-    payment_method = Column(String, default="cash")  # cash | card (paid at handover); online follows with Payrexx
+    payment_method = Column(String, default="cash")  # cash | card (at handover) | online (Payrexx)
+    payrexx_gateway_id = Column(String, default="")
     email = Column(String, default="")
     # Random id of the visitor's browser (signed "kunde" cookie) and an unguessable
     # code for the tracking link; both replace the guessable sequential order number.
