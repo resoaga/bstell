@@ -25,6 +25,8 @@ def send_mail(to: str, subject: str, body: str) -> bool:
         msg["Subject"] = subject
         msg["From"] = formataddr((s.smtp_from_name or "", s.smtp_from_email))
         msg["To"] = to
+        if s.email and s.email.strip().lower() != (s.smtp_from_email or "").strip().lower():
+            msg["Reply-To"] = s.email.strip()  # customers' answers go to the contact address
         msg.set_content(body)
         port = s.smtp_port or 587
         context = ssl.create_default_context()
