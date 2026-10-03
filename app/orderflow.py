@@ -1,6 +1,7 @@
 """Order-side helpers: confirmation e-mail and abuse limits for the checkout."""
 
 import time
+from html import escape
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 
@@ -83,13 +84,13 @@ def send_confirmation(order_id: int, base_url: str) -> None:
         table.append(("Total (inkl. MwSt.)", f"CHF {order.total:.2f}", True))
         inner = (
             f"<p>Danke für deine Bestellung! Sie ist bei uns eingegangen.</p>"
-            f"<p style=\"color:#6b6b6b;margin:0 0 8px;\">Bestellung #{order.id} · {how} · {pay}</p>"
-            + (f"<p style=\"margin:0 0 8px;\">{where.strip().replace(chr(10), '<br>')}</p>" if where else "")
+            f"<p style=\"color:#6b6b6b;margin:0 0 8px;\">Bestellung #{int(order.id)} · {escape(how)} · {escape(pay)}</p>"
+            + (f"<p style=\"margin:0 0 8px;\">{escape(where.strip()).replace(chr(10), '<br>')}</p>" if where else "")
             + mailhtml.rows(table)
             + f"<p>Voraussichtlich in ca. <strong>{minutes} Minuten</strong> (unverbindlicher Richtwert).</p>"
             + mailhtml.button(track, "Bestellung verfolgen", settings.accent_color)
         )
-        footer = f"Fragen? {settings.phone or ''} {settings.email or ''}".strip()
+        footer = escape(f"Fragen? {settings.phone or ''} {settings.email or ''}".strip())
         html = mailhtml.wrap(shop, settings.accent_color, f"Bestellung #{order.id}", inner, footer)
         send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", body, html)
     finally:
