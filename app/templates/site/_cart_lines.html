@@ -1,6 +1,7 @@
 {% if lines %}
 <div class="cart-actions">
-  <p class="cart-actions-total">Total <strong>CHF {{ "%.2f"|format(total) }}</strong></p>
+  <p class="cart-actions-total">Total <strong>CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
+  {% if service_fee %}<p class="cart-fee-note">inkl. {{ settings.service_fee_label }} CHF {{ "%.2f"|format(service_fee) }}</p>{% endif %}
   <div class="cart-actions-buttons">
     <a class="btn-secondary" href="/">← Weiter einkaufen</a>
     {% if below_minimum %}
@@ -37,7 +38,11 @@
   </li>
   {% endfor %}
 </ul>
-<p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total) }}</strong></p>
+{% if service_fee %}
+<p class="cart-sub">Zwischensumme <span>CHF {{ "%.2f"|format(total) }}</span></p>
+<p class="cart-sub">{{ settings.service_fee_label }} ({{ "%g"|format(settings.service_fee_percent) }} %) <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>
+{% endif %}
+<p class="cart-total"><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong></p>
 {% if not below_minimum %}<a class="btn-primary btn-block" href="/kasse">Zur Kasse</a>{% endif %}
 {% else %}
 <p class="empty">Der Warenkorb ist leer.</p>

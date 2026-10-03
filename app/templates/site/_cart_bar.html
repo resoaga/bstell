@@ -1,5 +1,5 @@
 <div id="cart-bar" class="cart-bar" hx-swap-oob="true">
   {% if cart_count > 0 %}
-  <a class="cart-bar-link" href="/warenkorb">{{ cart_count }} Artikel für CHF {{ "%.2f"|format(cart_total) }} – weiter zur Kasse</a>
+  <a class="cart-bar-link" href="/warenkorb">{{ cart_count }} Artikel für CHF {{ "%.2f"|format(cart_total_with_fee) }} – weiter zur Kasse</a>
   {% endif %}
 </div>

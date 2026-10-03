@@ -16,6 +16,7 @@
     {% endfor %}
   </ul>
   {% if order.note %}<p class="hint">Notiz: {{ order.note }}</p>{% endif %}
+  {% if order.service_fee %}<p class="hint">inkl. Servicegebühr CHF {{ "%.2f"|format(order.service_fee) }}</p>{% endif %}
   <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
   <div id="order-actions-{{ order.id }}">
     {% include "admin/_order_row_actions.html" %}

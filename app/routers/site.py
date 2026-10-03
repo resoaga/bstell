@@ -99,7 +99,10 @@ def site_extra(request: Request, db: Session) -> dict:
     hours_by_weekday = get_opening_hours_by_weekday(db)
     identity = cust.read_identity(request)
     my_orders = cust.orders_for_identity(db, identity, limit=5)
+    cart_fee = cart_lib.service_fee_for(settings, cart_total)
     return {
+        "service_fee": cart_fee,
+        "cart_total_with_fee": cart_total + cart_fee,
         "my_active_order": cust.active_order(my_orders),
         "has_history": bool(my_orders),
         "settings": settings,
@@ -337,7 +340,8 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
 
     identity = cust.read_identity(request)
     device_key = identity["k"] or cust.new_device_key()
-    order_total = total + (settings.delivery_fee if order_type == OrderType.delivery else 0.0)
+    service_fee = cart_lib.service_fee_for(settings, total)
+    order_total = total + service_fee + (settings.delivery_fee if order_type == OrderType.delivery else 0.0)
     order = Order(
         customer_name=customer_name,
         phone=phone,
@@ -349,6 +353,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         delivery_address=delivery_address if order_type == OrderType.delivery else "",
         note=note,
         total=order_total,
+        service_fee=service_fee,
         items=[
             OrderItem(
                 item_name=line["item"].name,

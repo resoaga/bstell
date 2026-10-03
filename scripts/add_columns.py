@@ -11,6 +11,10 @@ import sys
 COLUMNS = [
     ("categories", "is_promo", "BOOLEAN NOT NULL DEFAULT 0"),
     ("restaurant_settings", "hours_note", "VARCHAR DEFAULT ''"),
+    ("restaurant_settings", "service_fee_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("restaurant_settings", "service_fee_percent", "FLOAT DEFAULT 2.0"),
+    ("restaurant_settings", "service_fee_label", "VARCHAR DEFAULT 'Servicegebühr'"),
+    ("orders", "service_fee", "FLOAT DEFAULT 0"),
     ("orders", "email", "VARCHAR DEFAULT ''"),
     ("orders", "device_key", "VARCHAR DEFAULT ''"),
     ("orders", "tracking_token", "VARCHAR DEFAULT ''"),

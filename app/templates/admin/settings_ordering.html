@@ -25,6 +25,21 @@
     <label>Lieferkosten (CHF)
       <input type="number" step="0.05" min="0" name="delivery_fee" value="{{ settings.delivery_fee }}">
     </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="service_fee_enabled" value="true" {{ "checked" if settings.service_fee_enabled else "" }}>
+      Servicegebühr auf den Warenwert erheben
+    </label>
+    <label>Servicegebühr (% vom Warenwert, max. 20)
+      <input type="number" step="0.1" min="0" max="20" name="service_fee_percent" value="{{ settings.service_fee_percent }}">
+    </label>
+    <label>Bezeichnung für den Kunden
+      <input type="text" name="service_fee_label" value="{{ settings.service_fee_label }}" maxlength="40">
+    </label>
+    <p class="hint">
+      Wird als eigene Zeile im Warenkorb, an der Kasse und in der Bestätigung gezeigt, bevor der Kunde bestellt.
+      Berechnet auf den Warenwert (ohne Lieferkosten). Gilt für alle Bestellungen. Sobald Barzahlung und Karte
+      getrennt wählbar sind, soll sie nur für Kartenzahlungen gelten.
+    </p>
     <button type="submit">Speichern</button>
   </form>
 </section>

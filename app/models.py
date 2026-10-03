@@ -144,11 +144,20 @@ class Order(Base):
     note = Column(String, default="")
     status = Column(Enum(OrderStatus), default=OrderStatus.received, nullable=False)
     total = Column(Float, nullable=False, default=0.0)
+    service_fee = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     items = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.id"
     )
+
+    @property
+    def goods_total(self) -> float:
+        return sum(i.unit_price * i.quantity for i in self.items)
+
+    @property
+    def delivery_fee_paid(self) -> float:
+        return max(0.0, round(self.total - self.goods_total - (self.service_fee or 0.0), 2))
 
 
 class LoginLink(Base):
@@ -211,6 +220,10 @@ class RestaurantSettings(Base):
     delivery_enabled = Column(Boolean, default=True)
     minimum_order_value = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
+    # Optional percentage surcharge on the goods total (e.g. to pass card fees on to the buyer)
+    service_fee_enabled = Column(Boolean, default=False, nullable=False)
+    service_fee_percent = Column(Float, default=2.0)
+    service_fee_label = Column(String, default="Servicegebühr")
 
     delivery_zone_center = Column(String, default="")
     delivery_zone_radius_km = Column(Float, default=0.0)

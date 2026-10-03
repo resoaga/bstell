@@ -90,3 +90,11 @@ def resolve_cart_lines(request: Request, db: Session):
     if changed:
         request.session["cart"] = cart
     return lines, total
+
+
+def service_fee_for(settings, goods_total: float) -> float:
+    """Percentage surcharge on the goods total, computed from the settings (never
+    from anything the browser sends). 0 when the feature is off."""
+    if not settings.service_fee_enabled or goods_total <= 0:
+        return 0.0
+    return round(goods_total * (settings.service_fee_percent or 0.0) / 100.0 + 1e-9, 2)

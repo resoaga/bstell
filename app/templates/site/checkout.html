@@ -14,7 +14,10 @@
     </li>
     {% endfor %}
   </ul>
-  <p><strong>Total: CHF {{ "%.2f"|format(total) }}</strong>{% if settings.delivery_enabled and settings.delivery_fee %} (zzgl. CHF {{ "%.2f"|format(settings.delivery_fee) }} bei Lieferung){% endif %}</p>
+  {% if service_fee %}<p class="cart-sub">Zwischensumme <span>CHF {{ "%.2f"|format(total) }}</span></p>
+  <p class="cart-sub">{{ settings.service_fee_label }} ({{ "%g"|format(settings.service_fee_percent) }} %) <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
+  <p><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong>{% if settings.delivery_enabled and settings.delivery_fee %} (zzgl. CHF {{ "%.2f"|format(settings.delivery_fee) }} bei Lieferung){% endif %}</p>
+  <p class="hint">Alle Preise inkl. MwSt.</p>
 </section>
 
 <form method="post" action="/kasse" class="category">

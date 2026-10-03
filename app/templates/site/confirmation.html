@@ -16,6 +16,11 @@
     </li>
     {% endfor %}
   </ul>
+  {% if order.service_fee or order.delivery_fee_paid %}
+  <p class="cart-sub">Warenwert <span>CHF {{ "%.2f"|format(order.goods_total) }}</span></p>
+  {% if order.delivery_fee_paid %}<p class="cart-sub">Lieferung <span>CHF {{ "%.2f"|format(order.delivery_fee_paid) }}</span></p>{% endif %}
+  {% if order.service_fee %}<p class="cart-sub">{{ settings.service_fee_label }} <span>CHF {{ "%.2f"|format(order.service_fee) }}</span></p>{% endif %}
+  {% endif %}
   <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
   <p><a class="text-link" href="/verfolgen/{{ order.tracking_token }}">Bestellung verfolgen</a></p>
 </section>
