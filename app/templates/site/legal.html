@@ -9,7 +9,7 @@
 {% if sections %}
 <div class="accordion">
   {% for heading, paras in sections %}
-  <details>
+  <details name="accordion">
     <summary>{{ heading }}</summary>
     <div class="accordion-body">
       {% for para in paras %}<p>{{ para }}</p>{% endfor %}
@@ -20,4 +20,13 @@
 {% elif not intro %}
 <p class="empty">Noch kein Text hinterlegt.</p>
 {% endif %}
+<script>
+  // Only one section open at a time (older browsers ignore the "name" grouping)
+  document.querySelectorAll('.accordion details').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open) return;
+      document.querySelectorAll('.accordion details[open]').forEach(function (o) { if (o !== d) o.open = false; });
+    });
+  });
+</script>
 {% endblock %}

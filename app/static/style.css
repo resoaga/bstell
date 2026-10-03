@@ -778,11 +778,11 @@ body.site .cart-actions { background: #fff; border: 1px solid var(--line); borde
 body.site .cart-actions-total { margin: 0; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
 body.site .cart-actions-total strong { font-weight: 800; color: var(--accent); font-size: 22px; }
 body.site .cart-actions-buttons { display: flex; gap: 8px; }
-body.site .cart-actions-buttons > * { flex: 1 1 0; text-align: center; padding: 13px 10px; border-radius: 8px; font-weight: 700; font-size: 15px; text-decoration: none; }
-body.site .btn-secondary { background: #fff; color: var(--ink); border: 2px solid var(--ink); display: inline-block; cursor: pointer; font-family: inherit; }
+body.site .cart-actions-buttons > * { flex: 1 1 0; text-align: center; padding: 9px 8px; border-radius: 8px; font-weight: 700; font-size: 14px; text-decoration: none; line-height: 1.2; }
+body.site .btn-secondary { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); display: inline-block; cursor: pointer; font-family: inherit; }
 body.site .btn-secondary:active { background: var(--paper); }
 body.site .btn-primary.is-disabled { opacity: 0.4; cursor: not-allowed; }
-body.site .btn-block { display: block; text-align: center; }
+body.site .btn-block { display: block; text-align: center; padding: 10px 16px; font-size: 15px; }
 
 /* ---- Status / order-type labels (tracking, confirmation) ---- */
 body.site .status-badge { border-radius: 6px; font-size: 13px; padding: 6px 10px; }
