@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Bestellsystem – Admin{% endblock %}</title>
   <script src="/static/htmx.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a73c7'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/style.css?v={{ css_version() }}">
 </head>
 <body>
@@ -14,7 +15,7 @@
     <nav class="topbar-nav" id="topbarNav">
       <a class="topbar-link" href="/admin/menu">Menü</a>
       <a class="topbar-link" href="/admin/option-groups">Optionen</a>
-      <a class="topbar-link" href="/admin/orders">Bestellungen</a>
+      <a class="topbar-link" href="/admin/orders">Bestellungen <span hx-get="/admin/orders/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
       <a class="topbar-link" href="/admin/link-requests">Link-Anfragen</a>
       <a class="topbar-link" href="/admin/settings">Einstellungen</a>
     </nav>

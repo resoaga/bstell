@@ -1,29 +1,65 @@
 {% extends "base.html" %}
+{% block title %}Bestellungen – Admin{% endblock %}
 {% block content %}
-<h2>Bestellungen</h2>
-{% for order in orders %}
-<section class="category">
-  <div class="category-header">
-    <h2>#{{ order.id }} — {{ order.customer_name }}</h2>
-    <span class="tag">{{ order.created_at|localtime("%d.%m. %H:%M") }}</span>
-  </div>
-  <p class="hint">
-    {{ order.phone }}{{ " · " + order.delivery_address + ", " + order.customer_zip + " " + order.customer_city if order.delivery_address else "" }}
-    · <strong>{% if order.payment_method == "online" %}ONLINE BEZAHLT{% else %}{{ payment_labels.get(order.payment_method, "")|upper }} bei Übergabe{% endif %}</strong>
-  </p>
-  <ul class="options">
-    {% for line in order.items %}
-    <li>{{ line.quantity }}× {{ line.item_name }}{{ " (" + line.options_summary + ")" if line.options_summary else "" }}</li>
-    {% endfor %}
-  </ul>
-  {% if order.note %}<p class="hint">Notiz: {{ order.note }}</p>{% endif %}
-  {% if order.service_fee %}<p class="hint">inkl. Servicegebühr CHF {{ "%.2f"|format(order.service_fee) }}</p>{% endif %}
-  <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
-  <div id="order-actions-{{ order.id }}">
-    {% include "admin/_order_row_actions.html" %}
-  </div>
-</section>
-{% else %}
-<p class="empty">Noch keine Bestellungen.</p>
-{% endfor %}
+<div class="ord-top">
+  <h2>Bestellungen</h2>
+  <button type="button" id="sound-btn" class="sound-btn" aria-pressed="false">🔕 Ton aus</button>
+</div>
+<p id="sound-hint" class="hint" hidden>Tippe einmal auf „Ton aus“, um den Signalton bei neuen Bestellungen zu aktivieren (der Browser erlaubt Ton erst nach einem Klick).</p>
+{% include "admin/_orders_feed.html" %}
+
+<script>
+(function () {
+  var btn = document.getElementById('sound-btn');
+  var hint = document.getElementById('sound-hint');
+  var ctx = null;
+  var on = localStorage.getItem('ordersSound') === '1';
+  var lastMax = parseInt(document.getElementById('orders-feed').dataset.maxId, 10) || 0;
+  var baseTitle = document.title;
+
+  function render() {
+    btn.textContent = on ? '🔔 Ton an' : '🔕 Ton aus';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.classList.toggle('is-on', on);
+    hint.hidden = !(on && (!ctx || ctx.state === 'suspended'));
+  }
+  function audio() {
+    if (!ctx) { var C = window.AudioContext || window.webkitAudioContext; if (C) ctx = new C(); }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function beep() {
+    if (!on || !audio()) return;
+    var t = ctx.currentTime;
+    [880, 660, 880].forEach(function (f, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.28);
+      g.gain.exponentialRampToValueAtTime(0.35, t + i * 0.28 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.28 + 0.24);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t + i * 0.28); o.stop(t + i * 0.28 + 0.26);
+    });
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  }
+  btn.addEventListener('click', function () {
+    on = !on; localStorage.setItem('ordersSound', on ? '1' : '0');
+    if (on) { audio(); beep(); }
+    render();
+  });
+  // Browsers only unlock audio after a gesture: any tap on the page does it
+  document.addEventListener('click', function () { if (on) { audio(); render(); } }, { once: false });
+
+  function update() {
+    var feed = document.getElementById('orders-feed');
+    if (!feed) return;
+    var max = parseInt(feed.dataset.maxId, 10) || 0;
+    var fresh = parseInt(feed.dataset.new, 10) || 0;
+    if (max > lastMax) { beep(); lastMax = max; }
+    document.title = (fresh ? '(' + fresh + ') ' : '') + baseTitle;
+  }
+  document.body.addEventListener('htmx:afterSwap', update);
+  update(); render();
+})();
+</script>
 {% endblock %}

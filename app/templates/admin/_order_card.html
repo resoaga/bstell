@@ -1,0 +1,44 @@
+{% set delivery = order.order_type.value == "delivery" %}
+{% set mins = order.created_at|minutes_ago %}
+{% set limit = estimate["delivery"] if delivery else estimate["pickup"] %}
+{% set late = order.status.value in ("received", "preparing") and mins > limit %}
+<section class="ord ord-{{ order.status.value }}{{ ' ord-late' if late }}" id="order-{{ order.id }}">
+  <div class="ord-head">
+    <div class="ord-id">#{{ order.id }}</div>
+    <div class="ord-meta">
+      <span class="ord-time">{{ order.created_at|localtime("%H:%M") }}</span>
+      {% if order.status.value in ("received", "preparing", "ready") %}<span class="ord-ago{{ ' is-late' if late }}">vor {{ mins }} Min.</span>{% else %}<span class="ord-ago">{{ order.created_at|localtime("%d.%m.") }}</span>{% endif %}
+    </div>
+    <div class="ord-chips">
+      <span class="chip {{ 'chip-delivery' if delivery else 'chip-pickup' }}">{{ "Lieferung" if delivery else "Abholung" }}</span>
+      <span class="chip chip-pay-{{ order.payment_method }}">{% if order.payment_method == "online" %}ONLINE BEZAHLT{% elif order.payment_method == "card" %}KARTE / TWINT{% else %}BAR{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="ord-who">
+    <strong>{{ order.customer_name }}</strong>
+    <a href="tel:{{ order.phone|replace(' ', '') }}">{{ order.phone }}</a>
+    {% if delivery and order.delivery_address %}
+    <a class="ord-addr" target="_blank" rel="noopener"
+       href="https://www.google.com/maps/search/?api=1&query={{ (order.delivery_address ~ ', ' ~ order.customer_zip ~ ' ' ~ order.customer_city)|urlencode }}">📍 {{ order.delivery_address }}, {{ order.customer_zip }} {{ order.customer_city }}</a>
+    {% endif %}
+  </div>
+
+  <ul class="ord-items">
+    {% for line in order.items %}
+    <li><span class="ord-qty">{{ line.quantity }}×</span>
+      <span class="ord-name">{{ line.item_name }}{% if line.options_summary %}<small>{{ line.options_summary }}</small>{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+  {% if order.note %}<p class="ord-note">⚠ {{ order.note }}</p>{% endif %}
+
+  <div class="ord-foot">
+    <div class="ord-total">
+      {% if order.service_fee or order.delivery_fee_paid %}<small>Waren {{ "%.2f"|format(order.goods_total) }}{% if order.delivery_fee_paid %} · Lieferung {{ "%.2f"|format(order.delivery_fee_paid) }}{% endif %}{% if order.service_fee %} · Service {{ "%.2f"|format(order.service_fee) }}{% endif %}</small>{% endif %}
+      <strong>CHF {{ "%.2f"|format(order.total) }}</strong>
+    </div>
+    <div id="order-actions-{{ order.id }}" class="ord-actions">
+      {% include "admin/_order_row_actions.html" %}
+    </div>
+  </div>
+</section>

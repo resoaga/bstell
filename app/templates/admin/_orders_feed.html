@@ -1,0 +1,19 @@
+<div id="orders-feed" data-sig="{{ signature }}" data-max-id="{{ max_id }}" data-new="{{ new_count }}"
+     hx-get="/admin/orders/feed" hx-trigger="every 5s, ordersChanged from:body" hx-swap="outerHTML"
+     hx-vals='js:{sig: document.getElementById("orders-feed").dataset.sig}'>
+  <h3 class="ord-section">Offen <span class="ord-count">{{ open_orders|length }}</span></h3>
+  {% for order in open_orders %}
+  {% include "admin/_order_card.html" %}
+  {% else %}
+  <p class="empty">Keine offenen Bestellungen.</p>
+  {% endfor %}
+
+  {% if done_orders %}
+  <details class="ord-done">
+    <summary>Erledigt in den letzten 24 Stunden ({{ done_orders|length }})</summary>
+    {% for order in done_orders %}
+    {% include "admin/_order_card.html" %}
+    {% endfor %}
+  </details>
+  {% endif %}
+</div>

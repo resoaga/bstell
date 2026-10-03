@@ -1,5 +1,6 @@
+import hashlib
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -8,8 +9,9 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import customer as cust
@@ -548,13 +550,61 @@ def link_requests(request: Request, db: Session = Depends(get_db)):
     )
 
 
+OPEN_STATES = (OrderStatus.received, OrderStatus.preparing, OrderStatus.ready)
+
+
+def _orders_context(db: Session) -> dict:
+    now = datetime.utcnow()
+    open_orders = (
+        db.query(Order).filter(Order.status.in_(OPEN_STATES)).order_by(Order.created_at.asc()).all()
+    )
+    done_orders = (
+        db.query(Order)
+        .filter(Order.status.in_((OrderStatus.completed, OrderStatus.cancelled)), Order.created_at >= now - timedelta(hours=24))
+        .order_by(Order.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    max_id = db.query(func.max(Order.id)).scalar() or 0
+    # Changes whenever an order appears, changes status, or a minute passes (elapsed times)
+    signature = hashlib.md5(
+        ("|".join(f"{o.id}:{o.status.value}" for o in open_orders + done_orders) + f"@{now:%Y%m%d%H%M}").encode()
+    ).hexdigest()[:12]
+    return {
+        "open_orders": open_orders,
+        "done_orders": done_orders,
+        "max_id": max_id,
+        "signature": signature,
+        "new_count": sum(1 for o in open_orders if o.status == OrderStatus.received),
+        "payment_labels": PAYMENT_LABELS,
+        "estimate": {"pickup": 15, "delivery": 30},
+        **ORDER_TEMPLATE_EXTRAS,
+    }
+
+
 @router.get("/orders")
 def orders_list(request: Request, db: Session = Depends(get_db)):
-    orders = db.query(Order).filter(Order.status != OrderStatus.awaiting_payment).order_by(Order.created_at.desc()).all()
-    return templates.TemplateResponse(
-        "admin/orders_list.html",
-        {"request": request, "orders": orders, "payment_labels": PAYMENT_LABELS, **ORDER_TEMPLATE_EXTRAS},
-    )
+    settings = get_settings(db)
+    ctx = _orders_context(db)
+    ctx["estimate"] = {"pickup": settings.estimated_pickup_minutes, "delivery": settings.estimated_delivery_minutes}
+    return templates.TemplateResponse("admin/orders_list.html", {"request": request, **ctx})
+
+
+@router.get("/orders/feed")
+def orders_feed(request: Request, sig: str = "", db: Session = Depends(get_db)):
+    """Polled by the orders page. 204 (no swap) while nothing changed."""
+    settings = get_settings(db)
+    ctx = _orders_context(db)
+    if sig and sig == ctx["signature"]:
+        return Response(status_code=204)
+    ctx["estimate"] = {"pickup": settings.estimated_pickup_minutes, "delivery": settings.estimated_delivery_minutes}
+    return templates.TemplateResponse("admin/_orders_feed.html", {"request": request, **ctx})
+
+
+@router.get("/orders/badge")
+def orders_badge(db: Session = Depends(get_db)):
+    count = db.query(Order).filter(Order.status == OrderStatus.received).count()
+    return HTMLResponse(f'<span class="nav-badge">{count}</span>' if count else "")
 
 
 @router.post("/orders/{order_id}/advance", dependencies=mutating)
@@ -567,10 +617,12 @@ def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=400, detail="Kein weiterer Status möglich")
     order.status = next_status
     db.commit()
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "admin/_order_row_actions.html",
         {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
     )
+    response.headers["HX-Trigger"] = "ordersChanged"
+    return response
 
 
 @router.post("/orders/{order_id}/cancel", dependencies=mutating)
@@ -580,10 +632,12 @@ def cancel_order(order_id: int, request: Request, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
     order.status = OrderStatus.cancelled
     db.commit()
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "admin/_order_row_actions.html",
         {"request": request, "order": order, **ORDER_TEMPLATE_EXTRAS},
     )
+    response.headers["HX-Trigger"] = "ordersChanged"
+    return response
 
 
 @router.get("/settings")
