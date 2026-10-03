@@ -693,7 +693,20 @@ async def request_history_link(request: Request, background: BackgroundTasks, db
             "Wenn das aber mehrmals vorkommt, kontaktieren Sie bitte "
             f"{settings.email or settings.smtp_from_email}.\n"
         )
-        background.add_task(send_mail, email, f"Ihr Bestellverlauf bei {shop}", body)
+        from .. import mailhtml
+        inner = (
+            "<p>Hier ist der gewünschte Link für Ihren Bestellverlauf:</p>"
+            + mailhtml.button(link, "Bestellverlauf öffnen", settings.accent_color)
+            + f"<p style=\"color:#6b6b6b;\">Der Link ist {cust.LINK_VALID_MINUTES} Minuten gültig und funktioniert nur einmal.</p>"
+        )
+        contact = settings.email or settings.smtp_from_email
+        footer = (
+            "<strong>Sicherheitshinweis:</strong> Falls Sie diese E-Mail nicht angefordert haben - das kann auch aus Versehen "
+            "passiert sein - müssen Sie nichts unternehmen. Ohne Klick auf den Link passiert nichts. Wenn das aber mehrmals "
+            f"vorkommt, kontaktieren Sie bitte {contact}."
+        )
+        html = mailhtml.wrap(shop, settings.accent_color, "Ihr Bestellverlauf", inner, footer)
+        background.add_task(send_mail, email, f"Ihr Bestellverlauf bei {shop}", body, html)
     # Same answer for every outcome, so nobody can probe which addresses are customers
     return RedirectResponse(url="/verfolgen?link=sent", status_code=303)
 

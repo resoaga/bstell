@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from . import mailhtml
 from .mailer import mail_configured, send_mail
 from .models import PAYMENT_LABELS, Order, OrderStatus, OrderType
 
@@ -70,6 +71,26 @@ def send_confirmation(order_id: int, base_url: str) -> None:
             f"Bestellung verfolgen: {base_url}/verfolgen/{order.tracking_token}\n\n"
             f"Fragen? {settings.phone or settings.email or ''}\n"
         )
-        send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", body)
+        track = f"{base_url}/verfolgen/{order.tracking_token}"
+        table = [
+            (f"{i.quantity}× {i.item_name}" + (f" ({i.options_summary})" if i.options_summary else ""), f"CHF {i.unit_price * i.quantity:.2f}", False)
+            for i in order.items
+        ]
+        if order.service_fee:
+            table.append((settings.service_fee_label, f"CHF {order.service_fee:.2f}", False))
+        if order.delivery_fee_paid:
+            table.append(("Lieferung", f"CHF {order.delivery_fee_paid:.2f}", False))
+        table.append(("Total (inkl. MwSt.)", f"CHF {order.total:.2f}", True))
+        inner = (
+            f"<p>Danke für deine Bestellung! Sie ist bei uns eingegangen.</p>"
+            f"<p style=\"color:#6b6b6b;margin:0 0 8px;\">Bestellung #{order.id} · {how} · {pay}</p>"
+            + (f"<p style=\"margin:0 0 8px;\">{where.strip().replace(chr(10), '<br>')}</p>" if where else "")
+            + mailhtml.rows(table)
+            + f"<p>Voraussichtlich in ca. <strong>{minutes} Minuten</strong> (unverbindlicher Richtwert).</p>"
+            + mailhtml.button(track, "Bestellung verfolgen", settings.accent_color)
+        )
+        footer = f"Fragen? {settings.phone or ''} {settings.email or ''}".strip()
+        html = mailhtml.wrap(shop, settings.accent_color, f"Bestellung #{order.id}", inner, footer)
+        send_mail(order.email, f"Deine Bestellung #{order.id} bei {shop}", body, html)
     finally:
         db.close()

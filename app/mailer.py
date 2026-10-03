@@ -13,7 +13,7 @@ def mail_configured(settings) -> bool:
     return bool(settings.smtp_host and settings.smtp_from_email)
 
 
-def send_mail_result(to: str, subject: str, body: str):
+def send_mail_result(to: str, subject: str, body: str, html: str = None):
     """Sends a plain-text mail. Opens its own DB session so it can run as a
     background task. Returns (ok, error_text) and never raises."""
     db = SessionLocal()
@@ -33,6 +33,8 @@ def send_mail_result(to: str, subject: str, body: str):
         if s.email and s.email.strip().lower() != (s.smtp_from_email or "").strip().lower():
             msg["Reply-To"] = s.email.strip()  # customers' answers go to the contact address
         msg.set_content(body)
+        if html:
+            msg.add_alternative(html, subtype="html")
         port = s.smtp_port or 587
         context = ssl.create_default_context()
         if port == 465:
@@ -52,5 +54,5 @@ def send_mail_result(to: str, subject: str, body: str):
         db.close()
 
 
-def send_mail(to: str, subject: str, body: str) -> bool:
-    return send_mail_result(to, subject, body)[0]
+def send_mail(to: str, subject: str, body: str, html: str = None) -> bool:
+    return send_mail_result(to, subject, body, html)[0]
