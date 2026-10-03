@@ -335,7 +335,7 @@ def checkout_context(request: Request, db: Session, contact: dict, **extra) -> d
         "contact": contact,
         "zips": allowed_zips(settings),
         "payment_options": [
-            (k, v, PAYMENT_HINTS[k]) for k, v in PAYMENT_LABELS.items() if k != "online" or payrexx.configured(settings)
+            (k, v, PAYMENT_HINTS[k]) for k, v in PAYMENT_LABELS.items() if k != "online" or payrexx.available(settings)
         ],
         **extra,
         **site_extra(request, db),
@@ -384,7 +384,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     delivery_address = (form.get("delivery_address") or "").strip()[:120]
     note = (form.get("note") or "").strip()[:500]
     payment = form.get("payment") if form.get("payment") in PAYMENT_LABELS else ""
-    if payment == "online" and not payrexx.configured(settings):
+    if payment == "online" and not payrexx.available(settings):
         payment = ""
     if not customer_name or not phone:
         return error_response("Bitte Name und Telefonnummer angeben.")

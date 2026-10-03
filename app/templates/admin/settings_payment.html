@@ -6,7 +6,7 @@
 <section class="category">
   <h2>Zahlungsdienstleister</h2>
   <p class="hint">
-    Zugangsdaten für Payrexx. Sobald Instanz und API-Key gesetzt sind, erscheint an der Kasse „Online bezahlen“.
+    Zugangsdaten für Payrexx. Online bezahlen erscheint an der Kasse, wenn Instanz und API-Key gesetzt sind und der Schalter unten eingeschaltet ist.
     Die Bestellung kommt erst in die Küche, wenn Payrexx die Zahlung bestätigt hat.
     <br><strong>Webhook in Payrexx eintragen</strong> (Einstellungen → API → Webhooks, Typ Transaktion):
     <code>{{ webhook_url }}</code> — optional, aber empfohlen: ohne Webhook wird die Zahlung erst geprüft, wenn der Kunde auf die Webseite zurückkehrt.
@@ -19,6 +19,16 @@
       <input type="password" name="payrexx_api_key" placeholder="{{ 'unverändert lassen, um bestehenden Schlüssel zu behalten' if settings.payrexx_api_key else '' }}">
     </label>
     <p class="hint">{{ "API-Key ist gesetzt." if settings.payrexx_api_key else "Noch kein API-Key gesetzt." }}</p>
+    <label class="checkbox-label">
+      <input type="checkbox" name="online_payment_enabled" value="true" {{ "checked" if settings.online_payment_enabled else "" }}>
+      Online-Zahlung für Kunden freischalten
+    </label>
+    <p class="hint">
+      {% if settings.online_payment_enabled and settings.payrexx_instance and settings.payrexx_api_key %}<strong>Aktiv:</strong> Kunden sehen an der Kasse „Online bezahlen“.
+      {% elif settings.online_payment_enabled %}<strong>Eingeschaltet, aber Instanz oder API-Key fehlt</strong> – Kunden sehen es noch nicht.
+      {% else %}<strong>Aus:</strong> Kunden sehen den Hinweis „Online-Zahlung momentan nicht möglich“ und zahlen bei Übergabe.{% endif %}
+      Zum Einschalten: Instanz und API-Key eintragen, den Haken setzen, speichern.
+    </p>
     <button type="submit">Speichern</button>
   </form>
 </section>

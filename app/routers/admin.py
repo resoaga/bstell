@@ -838,9 +838,11 @@ def settings_payment(request: Request, db: Session = Depends(get_db)):
 def update_payment_settings(
     payrexx_instance: str = Form(""),
     payrexx_api_key: str = Form(""),
+    online_payment_enabled: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
+    settings.online_payment_enabled = online_payment_enabled
     settings.payrexx_instance = payrexx_instance
     if payrexx_api_key:
         settings.payrexx_api_key = payrexx_api_key

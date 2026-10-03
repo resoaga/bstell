@@ -22,6 +22,11 @@ def configured(settings) -> bool:
     return bool(settings.payrexx_instance and settings.payrexx_api_key)
 
 
+def available(settings) -> bool:
+    """Online payment is offered to customers: credentials set and switched on in the admin."""
+    return bool(settings.online_payment_enabled and configured(settings))
+
+
 def _signature(params: dict, secret: str) -> str:
     query = urllib.parse.urlencode(params)
     return base64.b64encode(hmac.new(secret.encode(), query.encode(), hashlib.sha256).digest()).decode()

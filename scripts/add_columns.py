@@ -18,6 +18,7 @@ COLUMNS = [
     ("restaurant_settings", "service_fee_label", "VARCHAR DEFAULT 'Servicegebühr'"),
     ("orders", "service_fee", "FLOAT DEFAULT 0"),
     ("menu_items", "sold_out_until", "DATETIME"),
+    ("restaurant_settings", "online_payment_enabled", "BOOLEAN NOT NULL DEFAULT 0"),
     ("orders", "customer_city", "VARCHAR DEFAULT ''"),
     ("orders", "payment_method", "VARCHAR DEFAULT 'cash'"),
     ("orders", "payrexx_gateway_id", "VARCHAR DEFAULT ''"),

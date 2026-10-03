@@ -278,6 +278,8 @@ class RestaurantSettings(Base):
     badge_3 = Column(String, default="")
     rating_text = Column(String, default="")
 
+    # Customers only see "Online bezahlen" when this is on AND the Payrexx credentials are set
+    online_payment_enabled = Column(Boolean, default=False, nullable=False)
     payrexx_instance = Column(String, default="")
     payrexx_api_key = Column(String, default="")
 
