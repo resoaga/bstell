@@ -15,6 +15,8 @@
       data-total="{{ total + service_fee }}" data-delivery-fee="{{ settings.delivery_fee or 0 }}"
       data-zips="{{ zips|join(',') }}">
 
+  <input type="hidden" name="t0" value="{{ t0 }}">
+  <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
   <details class="co-summary">
     <summary>
       <span>{{ lines|sum(attribute='quantity') }} Artikel</span>

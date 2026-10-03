@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import SESSION_SECRET_KEY
@@ -10,6 +11,20 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Bestellsystem")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY, same_site="lax")
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+
+@app.middleware("http")
+async def static_caching(request, call_next):
+    """Long browser caching for files whose URL changes when the content changes
+    (uploads have random names, fonts never change, style.css carries ?v=mtime)."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith(("/static/fonts/", "/static/uploads/", "/static/style.css")):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=604800"
+    return response
 
 
 @app.middleware("http")

@@ -1,10 +1,11 @@
 import json
 import re
+import time
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,7 @@ from .. import cart as cart_lib
 from .. import availability
 from .. import customer as cust
 from ..assets import css_version
-from .. import payrexx
+from .. import orderflow, payrexx
 from ..mailer import mail_configured, send_mail
 from ..database import get_db
 from ..models import (
@@ -116,7 +117,12 @@ def site_extra(request: Request, db: Session) -> dict:
     my_orders = cust.orders_for_identity(db, identity, limit=5)
     cart_fee = cart_lib.service_fee_for(settings, cart_total)
     shop = shop_status(hours_by_weekday, settings.preorder_minutes)
+    base_url = cust.public_base_url(request)
+    removed = [] if request.headers.get("HX-Request") else request.session.pop("cart_removed", [])
     return {
+        "site_base_url": base_url,
+        "canonical_url": base_url + request.url.path,
+        "cart_removed": removed,
         "shop": shop,
         "can_order": bool(settings.accepting_orders and shop["state"] in ("open", "preorder")),
         "service_fee": cart_fee,
@@ -145,11 +151,16 @@ def homepage(request: Request, db: Session = Depends(get_db)):
         times = []
         for item in category.items:
             until = availability.combined_block(rules, item)
-            if until:
+            if not item.is_available:
+                item_block[item.id] = "ausverkauft"
+                until = until or "sold"
+            elif until:
                 item_block[item.id] = availability.describe(until)
             times.append(until)
         if times and all(times):
-            cat_block[category.id] = availability.describe(max(times))
+            timed = [t for t in times if t != "sold"]
+            if timed and len(timed) == len(times):
+                cat_block[category.id] = availability.describe(max(timed))
     promo_items = [
         item
         for category in categories
@@ -168,6 +179,27 @@ def homepage(request: Request, db: Session = Depends(get_db)):
             **site_extra(request, db),
         },
     )
+
+
+@router.get("/robots.txt", include_in_schema=False)
+def robots_txt(request: Request):
+    base = cust.public_base_url(request)
+    body = (
+        "User-agent: *\n"
+        "Disallow: /admin\nDisallow: /api\nDisallow: /kasse\nDisallow: /warenkorb\n"
+        "Disallow: /verfolgen\nDisallow: /verlauf\nDisallow: /bestellung\nDisallow: /payrexx\n"
+        f"Sitemap: {base}/sitemap.xml\n"
+    )
+    return Response(body, media_type="text/plain")
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml(request: Request, db: Session = Depends(get_db)):
+    base = cust.public_base_url(request)
+    urls = [f"{base}/"] + [f"{base}/rechtliches/{p.slug}" for p in get_all_content_pages(db) if p.body.strip()]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls) + "</urlset>\n"
+    return Response(xml, media_type="application/xml")
 
 
 @router.get("/speisekarte")
@@ -333,6 +365,7 @@ def checkout_context(request: Request, db: Session, contact: dict, **extra) -> d
         "total": total,
         "below_minimum": total > 0 and total < settings.minimum_order_value,
         "contact": contact,
+        "t0": int(time.time()),
         "zips": allowed_zips(settings),
         "payment_options": [
             (k, v, PAYMENT_HINTS[k]) for k, v in PAYMENT_LABELS.items() if k != "online" or payrexx.available(settings)
@@ -348,7 +381,7 @@ def checkout_page(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/kasse")
-async def place_order(request: Request, db: Session = Depends(get_db)):
+async def place_order(request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
     form = await request.form()
     settings = get_settings(db)
     lines, total = cart_lib.resolve_cart_lines(request, db)
@@ -411,6 +444,17 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
 
     identity = cust.read_identity(request)
     device_key = identity["k"] or cust.new_device_key()
+    ip = cust.client_ip(request)
+    too_fast = False
+    try:
+        too_fast = time.time() - float(form.get("t0")) < orderflow.MIN_SECONDS_ON_CHECKOUT
+    except (TypeError, ValueError):
+        too_fast = True
+    if form.get("website") or too_fast:
+        return error_response("Das ging zu schnell. Bitte kurz prüfen und noch einmal absenden.")
+    if orderflow.ip_limit_reached(ip) or orderflow.phone_or_device_limit_reached(db, phone, device_key):
+        return error_response("Zu viele Bestellungen in kurzer Zeit. Bitte rufe uns kurz an" + (f": {settings.phone}" if settings.phone else "") + ".")
+    orderflow.register_ip(ip)
     service_fee = cart_lib.service_fee_for(settings, total)
     order_total = total + service_fee + (settings.delivery_fee if order_type == OrderType.delivery else 0.0)
     order = Order(
@@ -457,6 +501,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         response = RedirectResponse(url=gateway["link"], status_code=303)
     else:
         cart_lib.clear_cart(request)
+        background.add_task(orderflow.send_confirmation, order.id, cust.public_base_url(request))
         response = RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
     cust.set_identity_cookie(request, response, device_key, identity["e"])
     response.delete_cookie("kontakt")  # legacy cookie from the old checkout
@@ -479,12 +524,15 @@ def _settle_online_order(db: Session, order: Order) -> str:
 
 
 @router.get("/bestellung/{token}/zahlung")
-def payment_return(token: str, request: Request, r: str = "ok", db: Session = Depends(get_db)):
+def payment_return(token: str, request: Request, background: BackgroundTasks, r: str = "ok", db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
     if order is None or order.payment_method != "online":
         raise HTTPException(status_code=404)
+    was_waiting = order.status == OrderStatus.awaiting_payment
     state = _settle_online_order(db, order)
     if state == "paid":
+        if was_waiting:
+            background.add_task(orderflow.send_confirmation, order.id, cust.public_base_url(request))
         cart_lib.clear_cart(request)
         request.session["placed_order_ids"] = request.session.get("placed_order_ids", []) + [order.id]
         return RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
@@ -526,7 +574,7 @@ def _find_reference(node):
 
 
 @router.post("/payrexx/webhook")
-async def payrexx_webhook(request: Request, db: Session = Depends(get_db)):
+async def payrexx_webhook(request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
     """Payrexx calls this on payment events. The payload is NOT trusted (webhooks
     are unsigned): it only tells us which order to re-check against the API."""
     body = await request.body()
@@ -538,7 +586,9 @@ async def payrexx_webhook(request: Request, db: Session = Depends(get_db)):
     if reference:
         order = db.get(Order, int(reference.split("-")[1]))
         if order is not None and order.payment_method == "online":
-            _settle_online_order(db, order)
+            was_waiting = order.status == OrderStatus.awaiting_payment
+            if _settle_online_order(db, order) == "paid" and was_waiting:
+                background.add_task(orderflow.send_confirmation, order.id, cust.public_base_url(request))
     return {"ok": True}
 
 

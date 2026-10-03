@@ -59,12 +59,15 @@ def resolve_cart_lines(request: Request, db: Session):
     lines = []
     total = 0.0
     changed = False
+    removed_names = []
     rules = availability.load_rules(db)
     for key, line in list(cart.items()):
         item = db.get(MenuItem, line["item_id"])
         if item is None or not item.is_available:
             cart.pop(key, None)
             changed = True
+            if item is not None:
+                removed_names.append(item.name)
             continue
 
         option_ids = set(line.get("option_ids", []))
@@ -93,6 +96,8 @@ def resolve_cart_lines(request: Request, db: Session):
 
     if changed:
         request.session["cart"] = cart
+        if removed_names:
+            request.session["cart_removed"] = sorted(set(request.session.get("cart_removed", []) + removed_names))
     return lines, total
 
 

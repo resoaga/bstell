@@ -4,14 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ settings.name or "Jetzt bestellen" }}{% endblock %}</title>
-  <meta name="description" content="{{ settings.hero_subheadline or (settings.name ~ ' – online bestellen, Abholung oder Lieferung.') }}">
+  <meta name="description" content="{{ meta_description or settings.hero_subheadline or (settings.name ~ ' – online bestellen, Abholung oder Lieferung.') }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ settings.name }}">
+  <meta property="og:locale" content="de_CH">
+  <meta property="og:url" content="{{ canonical_url }}">
   <meta property="og:title" content="{{ settings.name or 'Jetzt bestellen' }}">
-  <meta property="og:description" content="{{ settings.hero_subheadline or '' }}">
-  {% if settings.hero_image_filename %}<meta property="og:image" content="/static/uploads/{{ settings.hero_image_filename }}">{% endif %}
-  <script src="/static/htmx.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta property="og:description" content="{{ meta_description or settings.hero_subheadline or '' }}">
+  {% if settings.hero_image_filename %}<meta property="og:image" content="{{ site_base_url }}/static/uploads/{{ settings.hero_image_filename }}">{% elif settings.logo_filename %}<meta property="og:image" content="{{ site_base_url }}/static/uploads/{{ settings.logo_filename }}">{% endif %}
+  <meta name="theme-color" content="{{ settings.accent_color or '#c8102e' }}">
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/static/htmx.min.js" defer></script>
   <link rel="stylesheet" href="/static/style.css?v={{ css_version() }}">
   <style>:root { --accent: {{ settings.accent_color or "#c8102e" }}; }</style>
   <script type="application/ld+json">{{ restaurant_schema_json | safe }}</script>
@@ -46,7 +50,7 @@
     </span>
     {% if settings.address_street %}
     {% set maps_url = "https://www.google.com/maps/search/?api=1&query=" ~ ((settings.address_street ~ ", " ~ settings.address_zip ~ " " ~ settings.address_city) | urlencode) %}
-    <a class="status-address" href="{{ maps_url }}" target="_blank" rel="noopener" aria-label="Adresse in Google Maps öffnen">📍 {{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</a>
+    <a class="status-address" href="{{ maps_url }}" target="_blank" rel="noopener" title="In Google Maps öffnen">📍 {{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</a>
     {% endif %}
   </div>
 
@@ -61,6 +65,10 @@
 
   {% if settings.promo_banner_enabled and settings.promo_banner_text %}
   <div class="promo-banner">{{ settings.promo_banner_text }}</div>
+  {% endif %}
+
+  {% if cart_removed %}
+  <p class="notice cart-removed-note">Leider ausverkauft und aus deinem Warenkorb entfernt: {{ cart_removed|join(", ") }}.</p>
   {% endif %}
 
   <div class="site-shell">
@@ -94,7 +102,7 @@
       <a href="/rechtliches/{{ page.slug }}">{{ page.title }}</a>
       {% endfor %}
     </nav>
-    <p class="site-footer-credit">Website-Technik: <span class="footer-credit-placeholder">[Platzhalter – eigene Werbung]</span></p>
+    {% if settings.footer_credit %}<p class="site-footer-credit">{{ settings.footer_credit }}</p>{% endif %}
   </footer>
 
   {% if not hide_cart %}{% include "site/_cart_bar.html" %}{% endif %}

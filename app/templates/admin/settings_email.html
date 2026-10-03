@@ -6,8 +6,7 @@
 <section class="category">
   <h2>E-Mail</h2>
   <p class="hint">
-    SMTP-Zugangsdaten für automatische E-Mails (z.B. Bestellbestätigung). Der eigentliche Versand wird erst
-    angeschlossen, sobald die Bestellstrecke das braucht — heute nur die Zugangsdaten.
+    SMTP-Zugangsdaten für automatische E-Mails (z.B. Bestellbestätigung). Damit werden die Bestätigungs-Mail und der „Bestellverlauf per E-Mail“-Link verschickt.
   </p>
   <form method="post" action="/admin/settings/email">
     <label>SMTP-Host
@@ -33,6 +32,20 @@
       Bestellbestätigung per E-Mail an Kunden senden
     </label>
     <button type="submit">Speichern</button>
+  </form>
+</section>
+
+<section class="category">
+  <h2>Test-E-Mail</h2>
+  <p class="hint">Erst speichern, dann hier eine Test-Mail an dich schicken. Kommt sie nicht an: Spam-Ordner prüfen, Zugangsdaten kontrollieren, und SPF/DKIM der Domain einrichten.</p>
+  {% if test == "ok" %}<p class="notice ok">Versendet. Bitte Postfach (und Spam) prüfen.</p>
+  {% elif test == "failed" %}<p class="notice">Versand fehlgeschlagen. Details stehen im Server-Log (Zeile „[mailer]“).</p>
+  {% elif test == "missing" %}<p class="notice">Bitte zuerst SMTP-Host und Absender-E-Mail speichern.</p>{% endif %}
+  <form method="post" action="/admin/settings/email/test">
+    <label>Senden an
+      <input type="email" name="to" required>
+    </label>
+    <button type="submit">Test-Mail senden</button>
   </form>
 </section>
 {% endblock %}

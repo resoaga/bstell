@@ -644,6 +644,7 @@ async def update_website_settings(
     badge_3: str = Form(""),
     rating_text: str = Form(""),
     accent_color: str = Form("#c8102e"),
+    footer_credit: str = Form(""),
     hero_image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -659,6 +660,7 @@ async def update_website_settings(
     settings.badge_3 = badge_3
     settings.rating_text = rating_text
     settings.accent_color = accent_color or "#c8102e"
+    settings.footer_credit = footer_credit.strip()[:140]
     if hero_image is not None and hero_image.filename:
         settings.hero_image_filename = await save_uploaded_image(hero_image, "hero", max_side=1600)
     db.commit()
@@ -850,10 +852,21 @@ def update_payment_settings(
     return RedirectResponse(url="/admin/settings/payment", status_code=303)
 
 
+@router.post("/settings/email/test", dependencies=mutating)
+def send_test_mail(to: str = Form(""), db: Session = Depends(get_db)):
+    from ..mailer import mail_configured, send_mail
+    settings = get_settings(db)
+    if not mail_configured(settings):
+        return RedirectResponse(url="/admin/settings/email?test=missing", status_code=303)
+    ok = send_mail(to.strip(), "Test-E-Mail vom Bestellsystem", "Wenn du das liest, funktioniert der E-Mail-Versand.")
+    return RedirectResponse(url=f"/admin/settings/email?test={'ok' if ok else 'failed'}", status_code=303)
+
+
 @router.get("/settings/email")
 def settings_email(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
-        "admin/settings_email.html", {"request": request, **settings_context("email", db)}
+        "admin/settings_email.html",
+        {"request": request, "test": request.query_params.get("test"), **settings_context("email", db)}
     )
 
 
