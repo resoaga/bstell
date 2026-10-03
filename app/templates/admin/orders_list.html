@@ -8,7 +8,8 @@
     <span class="tag">{{ order.created_at.strftime("%d.%m. %H:%M") }}</span>
   </div>
   <p class="hint">
-    {{ order.phone }}{{ " · " + order.delivery_address if order.delivery_address else "" }}
+    {{ order.phone }}{{ " · " + order.delivery_address + ", " + order.customer_zip + " " + order.customer_city if order.delivery_address else "" }}
+    · {{ payment_labels.get(order.payment_method, "") }} bei Übergabe
   </p>
   <ul class="options">
     {% for line in order.items %}

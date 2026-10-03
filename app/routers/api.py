@@ -136,6 +136,8 @@ def _order_json(order: Order) -> dict:
         "email": order.email,
         "address": order.delivery_address,
         "zip": order.customer_zip,
+        "city": order.customer_city,
+        "payment": order.payment_method,
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,

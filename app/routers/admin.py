@@ -17,6 +17,7 @@ from ..assets import css_version
 from ..database import get_db
 from ..models import (
     ORDER_STATUS_LABELS,
+    PAYMENT_LABELS,
     WEEKDAY_LABELS,
     Category,
     ItemOptionGroup,
@@ -549,7 +550,7 @@ def orders_list(request: Request, db: Session = Depends(get_db)):
     orders = db.query(Order).order_by(Order.created_at.desc()).all()
     return templates.TemplateResponse(
         "admin/orders_list.html",
-        {"request": request, "orders": orders, **ORDER_TEMPLATE_EXTRAS},
+        {"request": request, "orders": orders, "payment_labels": PAYMENT_LABELS, **ORDER_TEMPLATE_EXTRAS},
     )
 
 
@@ -814,6 +815,14 @@ def update_delivery_zone_settings(
     settings = get_settings(db)
     settings.delivery_zone_center = delivery_zone_center
     settings.delivery_zone_radius_km = delivery_zone_radius_km
+    db.commit()
+    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
+
+
+@router.post("/settings/delivery-zips", dependencies=mutating)
+def update_delivery_zips(delivery_zips: str = Form(""), db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    settings.delivery_zips = ", ".join(z for z in re.split(r"[\s,;]+", delivery_zips) if z)[:500]
     db.commit()
     return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
 

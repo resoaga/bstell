@@ -1,59 +1,107 @@
 {% extends "site/site_base.html" %}
+{% block title %}Kasse – {{ settings.name }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
 {% block content %}
 <h1 class="page-title">Kasse</h1>
 
 {% if error %}<p class="notice">{{ error }}</p>{% endif %}
 {% if shop.state == "preorder" %}<p class="notice ok">Vorbestellung: Wir öffnen um {{ shop.opens_text }}. Lieferung oder Abholung erfolgt ab dann, nicht früher.</p>{% endif %}
 
-<section class="category">
-  <h2>Deine Bestellung</h2>
-  <ul class="options">
-    {% for line in lines %}
-    <li>
-      {{ line.quantity }}× {{ line.item.name }}{% if line.options %} ({{ line.options|map(attribute='name')|join(', ') }}){% endif %}
-      <span>CHF {{ "%.2f"|format(line.line_total) }}</span>
-    </li>
-    {% endfor %}
-  </ul>
-  {% if service_fee %}<p class="cart-sub">Zwischensumme <span>CHF {{ "%.2f"|format(total) }}</span></p>
-  <p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode != "fixed" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
-  <p><strong>Total: CHF {{ "%.2f"|format(total + service_fee) }}</strong>{% if settings.delivery_enabled and settings.delivery_fee %} (zzgl. CHF {{ "%.2f"|format(settings.delivery_fee) }} bei Lieferung){% endif %}</p>
-  <p class="hint">Alle Preise inkl. MwSt.</p>
-</section>
+{% set both_types = settings.pickup_enabled and settings.delivery_enabled %}
+{% set is_delivery = (contact.order_type == "delivery") if contact.order_type else (not settings.pickup_enabled or both_types) %}
+{% set pay = contact.payment or "cash" %}
 
-<form method="post" action="/kasse" class="category">
-  <label>Name
-    <input type="text" name="customer_name" value="{{ contact.customer_name or '' }}" required>
-  </label>
-  <label>Telefonnummer
-    <input type="tel" name="phone" value="{{ contact.phone or '' }}" required>
-  </label>
-  <label>E-Mail
-    <input type="email" name="email" value="{{ contact.email or '' }}" autocomplete="email" maxlength="254" required>
-    <span class="hint">Damit findest du deine Bestellungen auch auf einem anderen Handy wieder.</span>
-  </label>
-  <label>PLZ
-    <input type="text" name="customer_zip" value="{{ contact.customer_zip or '' }}" required>
-  </label>
+<form method="post" action="/kasse" class="checkout" id="checkout-form"
+      data-total="{{ total + service_fee }}" data-delivery-fee="{{ settings.delivery_fee or 0 }}"
+      data-zips="{{ zips|join(',') }}">
 
-  {% if settings.pickup_enabled and settings.delivery_enabled %}
-  <div class="option-choice">
-    <span class="tag">Abholung oder Lieferung</span>
-    <label class="checkbox-label"><input type="radio" name="order_type" value="delivery" checked> Lieferung</label>
-    <label class="checkbox-label"><input type="radio" name="order_type" value="pickup"> Abholung</label>
+  <details class="co-summary">
+    <summary>
+      <span>{{ lines|sum(attribute='quantity') }} Artikel</span>
+      <strong>CHF {{ "%.2f"|format(total) }}</strong>
+    </summary>
+    <ul class="options">
+      {% for line in lines %}
+      <li>{{ line.quantity }}× {{ line.item.name }}{% if line.options %} ({{ line.options|map(attribute='name')|join(', ') }}){% endif %}
+        <span>CHF {{ "%.2f"|format(line.line_total) }}</span></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% if service_fee %}<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode != "fixed" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
+  {% if settings.delivery_enabled and settings.delivery_fee %}<p class="cart-sub" id="co-delivery-row">Lieferung <span>CHF {{ "%.2f"|format(settings.delivery_fee) }}</span></p>{% endif %}
+
+  {% if both_types %}
+  <div class="co-seg" role="radiogroup" aria-label="Abholung oder Lieferung">
+    <label><input type="radio" name="order_type" value="delivery" {{ "checked" if is_delivery else "" }}><span>Lieferung</span></label>
+    <label><input type="radio" name="order_type" value="pickup" {{ "checked" if not is_delivery else "" }}><span>Abholung</span></label>
   </div>
   {% endif %}
 
-  <label>Lieferadresse
-    <input type="text" name="delivery_address" value="{{ contact.delivery_address or '' }}" placeholder="Strasse, Nr., Ort">
-  </label>
-  <label>Anmerkung
-    <textarea name="note"></textarea>
-  </label>
-  <label class="checkbox-label">
-    <input type="checkbox" name="remember_contact" value="1" checked>
-    Angaben für nächstes Mal speichern (nur ein Cookie, kein Konto nötig)
-  </label>
-  <button type="submit">Bestellung abschicken</button>
+  <div class="co-grid">
+    <label class="co-full">Name
+      <input type="text" name="customer_name" value="{{ contact.customer_name or '' }}" autocomplete="name" required maxlength="100">
+    </label>
+    <label>Telefon
+      <input type="tel" name="phone" value="{{ contact.phone or '' }}" autocomplete="tel" required maxlength="30">
+    </label>
+    <label>E-Mail
+      <input type="email" name="email" value="{{ contact.email or '' }}" autocomplete="email" required maxlength="254">
+    </label>
+  </div>
+
+  <div class="co-grid delivery-fields" id="delivery-fields">
+    <label class="co-full">Strasse und Nr.
+      <input type="text" name="delivery_address" value="{{ contact.delivery_address or '' }}" autocomplete="street-address" maxlength="120">
+    </label>
+    <label>PLZ
+      <input type="text" name="customer_zip" value="{{ contact.customer_zip or '' }}" inputmode="numeric" autocomplete="postal-code" maxlength="10">
+    </label>
+    <label>Ort
+      <input type="text" name="customer_city" value="{{ contact.customer_city or '' }}" autocomplete="address-level2" maxlength="60">
+    </label>
+    <p class="co-zip-hint" id="co-zip-hint" hidden>Leider liefern wir nicht in diese PLZ. Abholung ist möglich.</p>
+  </div>
+
+  <div class="co-seg co-pay" role="radiogroup" aria-label="Zahlungsart">
+    {% for key, label in payment_labels.items() %}
+    <label><input type="radio" name="payment" value="{{ key }}" {{ "checked" if pay == key else "" }}><span>{{ label }}<small>bei Übergabe</small></span></label>
+    {% endfor %}
+  </div>
+
+  <details class="co-note">
+    <summary>Anmerkung hinzufügen</summary>
+    <textarea name="note" rows="2" maxlength="500" placeholder="z.B. Allergien, Klingel defekt …">{{ contact.note or '' }}</textarea>
+  </details>
+
+  <button type="submit" class="btn-primary btn-block" id="co-submit">Bestellen · <span id="co-btn-total">CHF {{ "%.2f"|format(total + service_fee + (settings.delivery_fee or 0 if is_delivery else 0)) }}</span></button>
+  <p class="hint co-hint">Preise inkl. MwSt.</p>
 </form>
+
+<script>
+(function () {
+  var form = document.getElementById('checkout-form');
+  var fields = document.getElementById('delivery-fields');
+  var zips = (form.dataset.zips || '').split(',').filter(Boolean);
+  var base = parseFloat(form.dataset.total), fee = parseFloat(form.dataset.deliveryFee) || 0;
+  var zipInput = form.querySelector('[name=customer_zip]'), hint = document.getElementById('co-zip-hint');
+  var row = document.getElementById('co-delivery-row'), submit = document.getElementById('co-submit');
+  function isDelivery() {
+    var r = form.querySelector('input[name=order_type]:checked');
+    return r ? r.value === 'delivery' : {{ 'true' if (settings.delivery_enabled and not settings.pickup_enabled) else 'false' }};
+  }
+  function refresh() {
+    var d = isDelivery();
+    fields.hidden = !d;
+    fields.querySelectorAll('input').forEach(function (i) { i.required = d; });
+    if (row) row.hidden = !d;
+    document.getElementById('co-btn-total').textContent = 'CHF ' + (base + (d ? fee : 0)).toFixed(2);
+    var bad = d && zips.length && zipInput.value.trim() && zips.indexOf(zipInput.value.trim()) === -1;
+    hint.hidden = !bad;
+    submit.disabled = !!bad;
+  }
+  form.addEventListener('change', refresh);
+  zipInput.addEventListener('input', refresh);
+  refresh();
+})();
+</script>
 {% endblock %}

@@ -25,6 +25,11 @@ class OrderType(str, enum.Enum):
     delivery = "delivery"
 
 
+PAYMENT_LABELS = {
+    "cash": "Barzahlung",
+    "card": "Kartenzahlung",
+}
+
 ORDER_TYPE_LABELS = {
     OrderType.pickup: "Abholung",
     OrderType.delivery: "Lieferung",
@@ -140,6 +145,8 @@ class Order(Base):
     customer_name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     customer_zip = Column(String, default="")
+    customer_city = Column(String, default="")
+    payment_method = Column(String, default="cash")  # cash | card (paid at handover); online follows with Payrexx
     email = Column(String, default="")
     # Random id of the visitor's browser (signed "kunde" cookie) and an unguessable
     # code for the tracking link; both replace the guessable sequential order number.
@@ -242,6 +249,8 @@ class RestaurantSettings(Base):
     service_fee_fixed = Column(Float, default=0.0)
     service_fee_label = Column(String, default="Servicegebühr")
 
+    # Postcodes we deliver to (comma/space separated). Empty = no restriction.
+    delivery_zips = Column(String, default="")
     delivery_zone_center = Column(String, default="")
     delivery_zone_radius_km = Column(Float, default=0.0)
 

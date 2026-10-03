@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -8,7 +9,6 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .. import cart as cart_lib
-from ..contact_cookie import COOKIE_MAX_AGE, COOKIE_NAME, decode_contact, encode_contact
 from .. import availability
 from .. import customer as cust
 from ..assets import css_version
@@ -17,6 +17,7 @@ from ..database import get_db
 from ..models import (
     CONTENT_PAGE_DEFAULTS,
     ORDER_STATUS_LABELS,
+    PAYMENT_LABELS,
     ORDER_TYPE_LABELS,
     WEEKDAY_LABELS,
     Category,
@@ -296,26 +297,49 @@ async def remove_cart_line(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/kasse")
-def checkout_page(request: Request, db: Session = Depends(get_db)):
+def last_contact(request: Request, db: Session) -> dict:
+    """Prefill for the checkout from this visitor's most recent order, so nobody
+    has to retype name/phone/address (no extra cookie or consent box needed)."""
+    orders = cust.orders_for_identity(db, cust.read_identity(request), limit=1)
+    if not orders:
+        return {}
+    o = orders[0]
+    return {
+        "customer_name": o.customer_name,
+        "phone": o.phone,
+        "email": o.email,
+        "delivery_address": o.delivery_address,
+        "customer_zip": o.customer_zip,
+        "customer_city": o.customer_city,
+        "order_type": o.order_type.value,
+        "payment": o.payment_method,
+    }
+
+
+def allowed_zips(settings) -> list:
+    return [z for z in re.split(r"[\s,;]+", settings.delivery_zips or "") if z]
+
+
+def checkout_context(request: Request, db: Session, contact: dict, **extra) -> dict:
     lines, total = cart_lib.resolve_cart_lines(request, db)
     settings = get_settings(db)
-    contact = {}
-    cookie_value = request.cookies.get(COOKIE_NAME)
-    if cookie_value:
-        contact = decode_contact(cookie_value)
-    return templates.TemplateResponse(
-        "site/checkout.html",
-        {
-            "request": request,
-            "hide_cart": True,
-            "lines": lines,
-            "total": total,
-            "below_minimum": total > 0 and total < settings.minimum_order_value,
-            "contact": contact,
-            **site_extra(request, db),
-        },
-    )
+    return {
+        "request": request,
+        "hide_cart": True,
+        "lines": lines,
+        "total": total,
+        "below_minimum": total > 0 and total < settings.minimum_order_value,
+        "contact": contact,
+        "zips": allowed_zips(settings),
+        "payment_labels": PAYMENT_LABELS,
+        **extra,
+        **site_extra(request, db),
+    }
+
+
+@router.get("/kasse")
+def checkout_page(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse("site/checkout.html", checkout_context(request, db, last_contact(request, db)))
 
 
 @router.post("/kasse")
@@ -325,18 +349,10 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     lines, total = cart_lib.resolve_cart_lines(request, db)
 
     def error_response(message: str):
+        keys = ("customer_name", "phone", "email", "customer_zip", "customer_city", "delivery_address", "order_type", "payment", "note")
         return templates.TemplateResponse(
             "site/checkout.html",
-            {
-                "request": request,
-                "hide_cart": True,
-                "lines": lines,
-                "total": total,
-                "below_minimum": total > 0 and total < settings.minimum_order_value,
-                "contact": {k: form.get(k, "") for k in ("customer_name", "phone", "email", "customer_zip", "delivery_address")},
-                "error": message,
-                **site_extra(request, db),
-            },
+            checkout_context(request, db, {k: form.get(k, "") for k in keys}, error=message),
             status_code=400,
         )
 
@@ -355,16 +371,20 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         names = ", ".join(f'{l["item"].name} ({availability.describe(l["blocked_until"])})' for l in blocked)
         return error_response(f"Aktuell nicht bestellbar: {names}. Bitte im Warenkorb entfernen.")
 
-    customer_name = (form.get("customer_name") or "").strip()
-    phone = (form.get("phone") or "").strip()
+    customer_name = (form.get("customer_name") or "").strip()[:100]
+    phone = (form.get("phone") or "").strip()[:30]
     email = cust.normalize_email(form.get("email") or "")
-    customer_zip = (form.get("customer_zip") or "").strip()
-    delivery_address = (form.get("delivery_address") or "").strip()
-    note = (form.get("note") or "").strip()
-    if not customer_name or not phone or not customer_zip:
-        return error_response("Name, Telefonnummer, E-Mail und PLZ sind erforderlich.")
+    customer_zip = (form.get("customer_zip") or "").strip()[:10]
+    customer_city = (form.get("customer_city") or "").strip()[:60]
+    delivery_address = (form.get("delivery_address") or "").strip()[:120]
+    note = (form.get("note") or "").strip()[:500]
+    payment = form.get("payment") if form.get("payment") in PAYMENT_LABELS else ""
+    if not customer_name or not phone:
+        return error_response("Bitte Name und Telefonnummer angeben.")
     if not email or "@" not in email or "." not in email.split("@")[-1] or len(email) > 254:
         return error_response("Bitte eine gültige E-Mail-Adresse angeben.")
+    if not payment:
+        return error_response("Bitte eine Zahlungsart wählen.")
 
     if settings.pickup_enabled and settings.delivery_enabled:
         order_type = OrderType.pickup if form.get("order_type") == "pickup" else OrderType.delivery
@@ -373,8 +393,14 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     else:
         order_type = OrderType.delivery
 
-    if order_type == OrderType.delivery and not delivery_address:
-        return error_response("Bitte eine Lieferadresse angeben.")
+    if order_type == OrderType.delivery:
+        if not delivery_address or not customer_zip or not customer_city:
+            return error_response("Bitte Strasse, PLZ und Ort für die Lieferung angeben.")
+        zips = allowed_zips(settings)
+        if zips and customer_zip not in zips:
+            return error_response(f"Leider liefern wir nicht nach {customer_zip}. Abholung ist möglich.")
+    else:
+        customer_zip = customer_city = ""
 
     identity = cust.read_identity(request)
     device_key = identity["k"] or cust.new_device_key()
@@ -384,6 +410,8 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
         customer_name=customer_name,
         phone=phone,
         customer_zip=customer_zip,
+        customer_city=customer_city,
+        payment_method=payment,
         email=email,
         device_key=device_key,
         tracking_token=cust.new_tracking_token(),
@@ -410,25 +438,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
 
     response = RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
     cust.set_identity_cookie(request, response, device_key, identity["e"])
-    if form.get("remember_contact"):
-        response.set_cookie(
-            COOKIE_NAME,
-            encode_contact(
-                {
-                    "customer_name": customer_name,
-                    "phone": phone,
-                    "email": email,
-                    "customer_zip": customer_zip,
-                    "delivery_address": delivery_address,
-                }
-            ),
-            max_age=COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="lax",
-            secure=request.url.scheme == "https",
-        )
-    else:
-        response.delete_cookie(COOKIE_NAME)
+    response.delete_cookie("kontakt")  # legacy cookie from the old checkout
     return response
 
 
@@ -450,6 +460,7 @@ def order_confirmation(order_id: int, request: Request, db: Session = Depends(ge
             "order": order,
             "status_label": ORDER_STATUS_LABELS[order.status],
             "type_label": ORDER_TYPE_LABELS[order.order_type],
+            "payment_labels": PAYMENT_LABELS,
             **site_extra(request, db),
         },
     )

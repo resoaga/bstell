@@ -4,7 +4,22 @@
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
-  <h2>Liefergebiet</h2>
+  <h2>Liefergebiet (Postleitzahlen)</h2>
+  <p class="hint">
+    Trage die PLZ ein, in die geliefert wird, getrennt durch Komma oder Leerzeichen, z.B. <code>8000, 8001, 8002</code>.
+    Die Webseite prüft sofort bei der Eingabe an der Kasse und noch einmal beim Absenden. Leer lassen = Lieferung überall.
+    Abholung ist davon nicht betroffen.
+  </p>
+  <form method="post" action="/admin/settings/delivery-zips">
+    <label>Erlaubte PLZ
+      <textarea name="delivery_zips" rows="2">{{ settings.delivery_zips }}</textarea>
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+
+<section class="category">
+  <h2>Liefergebiet nach Umkreis (noch nicht aktiv)</h2>
   <p class="hint">
     Wird aktuell nur gespeichert — die automatische Prüfung, ob eine Kundenadresse im Umkreis liegt, ist ein eigenes, größeres Thema und kommt später.
   </p>
