@@ -11,6 +11,9 @@ import sys
 COLUMNS = [
     ("categories", "is_promo", "BOOLEAN NOT NULL DEFAULT 0"),
     ("restaurant_settings", "hours_note", "VARCHAR DEFAULT ''"),
+    ("orders", "email", "VARCHAR DEFAULT ''"),
+    ("orders", "device_key", "VARCHAR DEFAULT ''"),
+    ("orders", "tracking_token", "VARCHAR DEFAULT ''"),
 ]
 
 con = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else "bestellsystem.db")
@@ -23,4 +26,16 @@ for table, column, ddl in COLUMNS:
     else:
         con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
         print(f"{table}.{column}: angelegt")
+con.commit()
+
+# Alte Bestellungen bekommen einen Tracking-Code (neue bekommen ihn beim Bestellen)
+import secrets
+
+if any(row[1] == "tracking_token" for row in con.execute("PRAGMA table_info(orders)")):
+    missing = [r[0] for r in con.execute("SELECT id FROM orders WHERE tracking_token IS NULL OR tracking_token = ''")]
+    for order_id in missing:
+        con.execute("UPDATE orders SET tracking_token = ? WHERE id = ?", (secrets.token_urlsafe(16), order_id))
+    print(f"orders.tracking_token: {len(missing)} alte Bestellungen aufgefuellt")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_orders_tracking_token ON orders (tracking_token)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_orders_device_key ON orders (device_key)")
 con.commit()

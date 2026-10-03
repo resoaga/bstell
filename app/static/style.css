@@ -801,3 +801,23 @@ body.site .footer-credit-placeholder { font-style: italic; }
   body.site .cart-line { flex-direction: row; align-items: center; justify-content: space-between; }
   body.site .menu-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---- Customer history / order tracking ---- */
+body.site .order-bar {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: center;
+  background: var(--ink); color: #fff; padding: 9px 18px; text-decoration: none; font-size: 14px; font-weight: 600;
+}
+body.site .order-bar:hover, body.site .order-bar:active { background: var(--ink-soft); }
+body.site .order-bar-go { text-decoration: underline; }
+body.site .order-date { font-size: 13px; font-weight: 500; color: #6b6b6b; margin-left: 6px; }
+body.site .progress { display: flex; gap: 4px; list-style: none; padding: 0; margin: 12px 0; font-size: 12px; }
+body.site .progress li { flex: 1; text-align: center; padding: 6px 2px; border-top: 4px solid var(--line); color: #8a8a8a; }
+body.site .progress li.done { border-top-color: var(--accent); color: var(--ink); }
+body.site .progress li.now { border-top-color: var(--accent); color: var(--accent); font-weight: 700; }
+body.site .notice.ok { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
+body.site .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+/* ---- Admin: link request log ---- */
+.link-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.link-table th, .link-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e3ddd4; }
+.link-table .row-alert td { background: #fde8e8; color: #8a1212; font-weight: 600; }

@@ -22,6 +22,7 @@ from ..models import (
     OpeningHour,
     Option,
     OptionGroup,
+    LoginLink,
     Order,
     OrderStatus,
     SelectionType,
@@ -488,6 +489,25 @@ def delete_item_option_link(link_id: int, request: Request, db: Session = Depend
     db.delete(link)
     db.commit()
     return _item_links_response(request, db, item_id)
+
+
+LINK_STATUS_LABELS = {
+    "sent": "Link gesendet",
+    "no_orders": "Keine Bestellungen zu dieser E-Mail (nichts gesendet)",
+    "rate_limited": "Zu viele Links (nichts gesendet)",
+    "blocked": "GESPERRT – auffällig viele Anfragen",
+    "mail_off": "E-Mail-Versand aus",
+    "failed": "Versand fehlgeschlagen",
+}
+
+
+@router.get("/link-requests")
+def link_requests(request: Request, db: Session = Depends(get_db)):
+    entries = db.query(LoginLink).order_by(LoginLink.created_at.desc()).limit(200).all()
+    return templates.TemplateResponse(
+        "admin/link_requests.html",
+        {"request": request, "entries": entries, "labels": LINK_STATUS_LABELS},
+    )
 
 
 @router.get("/orders")

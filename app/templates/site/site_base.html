@@ -27,9 +27,17 @@
       {% endif %}
     </a>
     <nav class="site-nav">
-      <a href="/verfolgen">Bestellung verfolgen</a>
+      <a href="/verfolgen">Meine Bestellungen</a>
     </nav>
   </header>
+
+  {% if my_active_order %}
+  <a class="order-bar" href="/verfolgen">
+    <span>Deine Bestellung #{{ my_active_order.id }}</span>
+    <span class="status-badge status-{{ my_active_order.status.value }}">{{ {"received": "Eingegangen", "preparing": "In Zubereitung", "ready": "Fertig"}[my_active_order.status.value] }}</span>
+    <span class="order-bar-go">Verfolgen →</span>
+  </a>
+  {% endif %}
 
   {% set shop_state = "open" if (is_open and settings.accepting_orders) else ("paused" if is_open else "closed") %}
   <div class="status-strip">

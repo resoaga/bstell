@@ -17,10 +17,7 @@
     {% endfor %}
   </ul>
   <p><strong>Total: CHF {{ "%.2f"|format(order.total) }}</strong></p>
-  <p class="hint">
-    Verfolge deine Bestellung mit Bestellnummer <strong>{{ order.id }}</strong> und PLZ <strong>{{ order.customer_zip }}</strong>:
-    <a class="text-link" href="/verfolgen?bestellnummer={{ order.id }}&plz={{ order.customer_zip }}">Bestellung verfolgen</a>
-  </p>
+  <p><a class="text-link" href="/verfolgen/{{ order.tracking_token }}">Bestellung verfolgen</a></p>
 </section>
 {% else %}
 <p class="empty">Bestellung nicht gefunden.</p>

@@ -2,14 +2,16 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .. import cart as cart_lib
 from ..contact_cookie import COOKIE_MAX_AGE, COOKIE_NAME, decode_contact, encode_contact
+from .. import customer as cust
 from ..assets import css_version
+from ..mailer import mail_configured, send_mail
 from ..database import get_db
 from ..models import (
     CONTENT_PAGE_DEFAULTS,
@@ -95,7 +97,11 @@ def site_extra(request: Request, db: Session) -> dict:
     _, cart_total = cart_lib.resolve_cart_lines(request, db)
     settings = get_settings(db)
     hours_by_weekday = get_opening_hours_by_weekday(db)
+    identity = cust.read_identity(request)
+    my_orders = cust.orders_for_identity(db, identity, limit=5)
     return {
+        "my_active_order": cust.active_order(my_orders),
+        "has_history": bool(my_orders),
         "settings": settings,
         "cart_count": cart_lib.cart_item_count(request),
         "cart_total": cart_total,
@@ -289,7 +295,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
                 "lines": lines,
                 "total": total,
                 "below_minimum": total > 0 and total < settings.minimum_order_value,
-                "contact": {k: form.get(k, "") for k in ("customer_name", "phone", "customer_zip", "delivery_address")},
+                "contact": {k: form.get(k, "") for k in ("customer_name", "phone", "email", "customer_zip", "delivery_address")},
                 "error": message,
                 **site_extra(request, db),
             },
@@ -307,11 +313,14 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
 
     customer_name = (form.get("customer_name") or "").strip()
     phone = (form.get("phone") or "").strip()
+    email = cust.normalize_email(form.get("email") or "")
     customer_zip = (form.get("customer_zip") or "").strip()
     delivery_address = (form.get("delivery_address") or "").strip()
     note = (form.get("note") or "").strip()
     if not customer_name or not phone or not customer_zip:
         return error_response("Name, Telefonnummer und PLZ sind erforderlich.")
+    if email and ("@" not in email or "." not in email.split("@")[-1] or len(email) > 254):
+        return error_response("Bitte eine gültige E-Mail-Adresse angeben oder das Feld leer lassen.")
 
     if settings.pickup_enabled and settings.delivery_enabled:
         order_type = OrderType.pickup if form.get("order_type") == "pickup" else OrderType.delivery
@@ -323,11 +332,16 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     if order_type == OrderType.delivery and not delivery_address:
         return error_response("Bitte eine Lieferadresse angeben.")
 
+    identity = cust.read_identity(request)
+    device_key = identity["k"] or cust.new_device_key()
     order_total = total + (settings.delivery_fee if order_type == OrderType.delivery else 0.0)
     order = Order(
         customer_name=customer_name,
         phone=phone,
         customer_zip=customer_zip,
+        email=email,
+        device_key=device_key,
+        tracking_token=cust.new_tracking_token(),
         order_type=order_type,
         delivery_address=delivery_address if order_type == OrderType.delivery else "",
         note=note,
@@ -349,6 +363,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
     request.session["placed_order_ids"] = request.session.get("placed_order_ids", []) + [order.id]
 
     response = RedirectResponse(url=f"/bestellung/{order.id}/bestaetigung", status_code=303)
+    cust.set_identity_cookie(request, response, device_key, identity["e"])
     if form.get("remember_contact"):
         response.set_cookie(
             COOKIE_NAME,
@@ -356,6 +371,7 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
                 {
                     "customer_name": customer_name,
                     "phone": phone,
+                    "email": email,
                     "customer_zip": customer_zip,
                     "delivery_address": delivery_address,
                 }
@@ -393,48 +409,105 @@ def order_confirmation(order_id: int, request: Request, db: Session = Depends(ge
     )
 
 
-@router.get("/verfolgen")
-def track_order(
-    request: Request,
-    bestellnummer: Optional[str] = None,
-    plz: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    order = None
-    not_found = False
-    remaining_minutes = None
-    if bestellnummer and plz:
-        not_found = True
-        if bestellnummer.strip().isdigit():
-            candidate = db.get(Order, int(bestellnummer.strip()))
-            if candidate is not None and candidate.customer_zip.strip() == plz.strip():
-                order = candidate
-                not_found = False
+def _remaining_minutes(order: Order, settings) -> Optional[int]:
+    if order.status.value not in ("received", "preparing"):
+        return None
+    estimate = (
+        settings.estimated_delivery_minutes
+        if order.order_type == OrderType.delivery
+        else settings.estimated_pickup_minutes
+    )
+    elapsed_minutes = (datetime.utcnow() - order.created_at).total_seconds() / 60
+    return max(0, round(estimate - elapsed_minutes))
 
-    if order is not None and order.status.value in ("received", "preparing"):
-        settings = get_settings(db)
-        estimate = (
-            settings.estimated_delivery_minutes
-            if order.order_type == OrderType.delivery
-            else settings.estimated_pickup_minutes
-        )
-        elapsed_minutes = (datetime.utcnow() - order.created_at).total_seconds() / 60
-        remaining_minutes = max(0, round(estimate - elapsed_minutes))
 
+def _tracking_response(request: Request, db: Session, status_code: int = 200, **ctx):
     return templates.TemplateResponse(
         "site/tracking.html",
-        {
-            "request": request,
-            "order": order,
-            "not_found": not_found,
-            "status_label": ORDER_STATUS_LABELS[order.status] if order else None,
-            "type_label": ORDER_TYPE_LABELS[order.order_type] if order else None,
-            "remaining_minutes": remaining_minutes,
-            "bestellnummer": bestellnummer or "",
-            "plz": plz or "",
-            **site_extra(request, db),
-        },
+        {"request": request, "status_labels": ORDER_STATUS_LABELS, "type_labels": ORDER_TYPE_LABELS, **ctx, **site_extra(request, db)},
+        status_code=status_code,
     )
+
+
+@router.get("/verfolgen")
+def order_history(request: Request, db: Session = Depends(get_db)):
+    """Hub: the visitor's own orders (recognised by cookie), otherwise the
+    e-mail form to get a link for a new device."""
+    identity = cust.read_identity(request)
+    orders = cust.orders_for_identity(db, identity)
+    settings = get_settings(db)
+    return _tracking_response(
+        request, db,
+        mode="history",
+        orders=orders,
+        remaining={o.id: _remaining_minutes(o, settings) for o in orders},
+        refresh=cust.active_order(orders) is not None,
+        link_state=request.query_params.get("link"),
+    )
+
+
+@router.get("/verfolgen/{token}")
+def track_order(token: str, request: Request, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.tracking_token == token).first() if len(token) >= 16 else None
+    settings = get_settings(db)
+    return _tracking_response(
+        request, db,
+        mode="single",
+        orders=[order] if order else [],
+        status_code=200 if order else 404,
+        not_found=order is None,
+        remaining={order.id: _remaining_minutes(order, settings)} if order else {},
+        refresh=bool(order and order.status.value in cust.ACTIVE_STATUSES),
+    )
+
+
+@router.post("/verlauf/anfordern")
+async def request_history_link(request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
+    form = await request.form()
+    email = cust.normalize_email(form.get("email") or "")
+    # Honeypot field: real visitors never fill it
+    if form.get("website") or not email or "@" not in email or len(email) > 254:
+        return RedirectResponse(url="/verfolgen?link=invalid", status_code=303)
+    settings = get_settings(db)
+    if not mail_configured(settings):
+        return RedirectResponse(url="/verfolgen?link=off", status_code=303)
+    ip = cust.client_ip(request)
+    status, token = cust.request_login_link(db, email, ip)
+    if status == "sent":
+        link = f"{cust.public_base_url(request)}/verlauf/anmelden?t={token}"
+        shop = settings.name or "unser Restaurant"
+        body = (
+            f"Gewünschter Link für Ihren Bestellverlauf bei {shop}:\n\n"
+            f"{link}\n\n"
+            f"Der Link ist {cust.LINK_VALID_MINUTES} Minuten gültig und funktioniert nur einmal.\n\n"
+            "Sicherheitshinweis:\n"
+            "Falls Sie diese E-Mail nicht angefordert haben - das kann auch aus Versehen passiert sein - "
+            "müssen Sie nichts unternehmen. Ohne Klick auf den Link passiert nichts.\n"
+            "Wenn das aber mehrmals vorkommt, kontaktieren Sie bitte "
+            f"{settings.email or settings.smtp_from_email}.\n"
+        )
+        background.add_task(send_mail, email, f"Ihr Bestellverlauf bei {shop}", body)
+    # Same answer for every outcome, so nobody can probe which addresses are customers
+    return RedirectResponse(url="/verfolgen?link=sent", status_code=303)
+
+
+@router.get("/verlauf/anmelden")
+def history_login_page(request: Request, t: str = "", db: Session = Depends(get_db)):
+    """Shows a confirm button instead of consuming the token on GET, so mail
+    scanners that pre-open links don't burn it."""
+    return _tracking_response(request, db, mode="confirm", orders=[], token=t, token_ok=cust.token_is_valid(db, t) if t else False)
+
+
+@router.post("/verlauf/anmelden")
+async def history_login(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    email = cust.redeem_token(db, form.get("t") or "")
+    if email is None:
+        return RedirectResponse(url="/verfolgen?link=expired", status_code=303)
+    identity = cust.read_identity(request)
+    response = RedirectResponse(url="/verfolgen", status_code=303)
+    cust.set_identity_cookie(request, response, identity["k"] or cust.new_device_key(), email)
+    return response
 
 
 @router.get("/rechtliches/{slug}")

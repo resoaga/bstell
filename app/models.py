@@ -134,6 +134,11 @@ class Order(Base):
     customer_name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     customer_zip = Column(String, default="")
+    email = Column(String, default="")
+    # Random id of the visitor's browser (signed "kunde" cookie) and an unguessable
+    # code for the tracking link; both replace the guessable sequential order number.
+    device_key = Column(String, default="", index=True)
+    tracking_token = Column(String, default="", index=True)
     order_type = Column(Enum(OrderType), default=OrderType.delivery, nullable=False)
     delivery_address = Column(String, default="")
     note = Column(String, default="")
@@ -144,6 +149,24 @@ class Order(Base):
     items = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.id"
     )
+
+
+class LoginLink(Base):
+    """One request for an order-history link by e-mail. Doubles as the rate-limit
+    counter and the log the admin reviews to spot misuse. Only the hash of the
+    one-time token is stored."""
+
+    __tablename__ = "login_links"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, nullable=False, index=True)
+    ip = Column(String, default="", index=True)
+    # sent | no_orders | rate_limited | blocked | mail_off | failed
+    status = Column(String, nullable=False)
+    token_hash = Column(String, default="", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    used_at = Column(DateTime, nullable=True)
 
 
 class OrderItem(Base):

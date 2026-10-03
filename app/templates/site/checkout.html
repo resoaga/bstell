@@ -24,6 +24,10 @@
   <label>Telefonnummer
     <input type="tel" name="phone" value="{{ contact.phone or '' }}" required>
   </label>
+  <label>E-Mail (optional)
+    <input type="email" name="email" value="{{ contact.email or '' }}" autocomplete="email" maxlength="254">
+    <span class="hint">Damit findest du deine Bestellungen auch auf einem anderen Handy wieder.</span>
+  </label>
   <label>PLZ
     <input type="text" name="customer_zip" value="{{ contact.customer_zip or '' }}" required>
   </label>
