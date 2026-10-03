@@ -3,5 +3,5 @@
   hx-post="/admin/items/{{ item.id }}/toggle"
   hx-swap="outerHTML"
 >
-  {% if item.is_available %}Als ausverkauft markieren{% else %}Wieder verfügbar machen{% endif %}
+  {% if item.temp_sold_out %}Ausverkauft bis {{ item.sold_out_until.strftime('%H:%M') }} – jetzt freigeben{% elif item.is_available %}Als ausverkauft markieren{% else %}Wieder verfügbar machen{% endif %}
 </button>

@@ -31,6 +31,7 @@ from ..repo import (
     get_opening_hours_by_weekday,
     get_settings,
     is_currently_open,
+    shop_status,
 )
 
 router = APIRouter()
@@ -72,6 +73,15 @@ def _restaurant_schema_json(settings, hours_by_weekday: dict) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
 
 
+def closed_message(settings, shop: dict) -> str:
+    """Why ordering is not possible right now (shop closed, outside pre-order window)."""
+    if not settings.accepting_orders:
+        return "Wir nehmen aktuell keine Bestellungen an."
+    when = f" Wir öffnen {shop['opens_text']}." if shop["opens_text"] else ""
+    contact = f" Für frühere Bestellungen bitte anrufen: {settings.phone}." if settings.phone else ""
+    return f"Wir haben geschlossen.{when} Vorbestellungen sind {settings.preorder_minutes or 0} Minuten vor Öffnung möglich.{contact}"
+
+
 def footer_hours(hours_by_weekday: dict) -> list:
     """Compact opening hours for the footer: consecutive days with identical
     hours share one line (Mo–Fr, Sa, So). Returns [(label, text), ...]."""
@@ -101,7 +111,10 @@ def site_extra(request: Request, db: Session) -> dict:
     identity = cust.read_identity(request)
     my_orders = cust.orders_for_identity(db, identity, limit=5)
     cart_fee = cart_lib.service_fee_for(settings, cart_total)
+    shop = shop_status(hours_by_weekday, settings.preorder_minutes)
     return {
+        "shop": shop,
+        "can_order": bool(settings.accepting_orders and shop["state"] in ("open", "preorder")),
         "service_fee": cart_fee,
         "cart_total_with_fee": cart_total + cart_fee,
         "my_active_order": cust.active_order(my_orders),
@@ -121,25 +134,25 @@ def site_extra(request: Request, db: Session) -> dict:
 @router.get("/")
 def homepage(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
-    promo_items = [
-        item
-        for category in categories
-        if category.is_promo
-        for item in category.items
-        if item.is_available
-    ][:5]
     rules = availability.load_rules(db)
     item_block = {}
     cat_block = {}
     for category in categories:
         times = []
         for item in category.items:
-            until = availability.blocked_until(rules, category.id, item.id)
+            until = availability.combined_block(rules, item)
             if until:
                 item_block[item.id] = availability.describe(until)
             times.append(until)
         if times and all(times):
             cat_block[category.id] = availability.describe(max(times))
+    promo_items = [
+        item
+        for category in categories
+        if category.is_promo
+        for item in category.items
+        if item.is_available and item.id not in item_block
+    ][:5]
     return templates.TemplateResponse(
         "site/index.html",
         {
@@ -162,14 +175,11 @@ def menu_page_redirect():
 async def add_to_cart(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     settings = get_settings(db)
-    if not settings.accepting_orders:
+    extra = site_extra(request, db)
+    if not extra["can_order"]:
         return templates.TemplateResponse(
             "site/_add_result.html",
-            {
-                "request": request,
-                "error": "Wir nehmen aktuell keine Bestellungen an.",
-                **site_extra(request, db),
-            },
+            {"request": request, "error": closed_message(settings, extra["shop"]), **extra},
         )
 
     item_id = int(form.get("item_id"))
@@ -180,7 +190,7 @@ async def add_to_cart(request: Request, db: Session = Depends(get_db)):
             {"request": request, "error": "Artikel nicht verfügbar.", **site_extra(request, db)},
         )
 
-    until = availability.blocked_until(availability.load_rules(db), item.category_id, item.id)
+    until = availability.combined_block(availability.load_rules(db), item)
     if until:
         return templates.TemplateResponse(
             "site/_add_result.html",
@@ -330,8 +340,9 @@ async def place_order(request: Request, db: Session = Depends(get_db)):
             status_code=400,
         )
 
-    if not settings.accepting_orders:
-        return error_response("Wir nehmen aktuell keine Bestellungen an.")
+    shop = shop_status(get_opening_hours_by_weekday(db), settings.preorder_minutes)
+    if not settings.accepting_orders or shop["state"] == "closed":
+        return error_response(closed_message(settings, shop))
     if not lines:
         return error_response("Der Warenkorb ist leer.")
     if total < settings.minimum_order_value:

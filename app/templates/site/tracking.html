@@ -10,11 +10,11 @@
 <section class="category order-card">
   <h2>Bestellung #{{ order.id }} <span class="order-date">{{ order.created_at.strftime("%d.%m.%Y %H:%M") }}</span></h2>
   <p>
-    <span class="status-badge status-{{ order.status.value }}">{{ status_labels[order.status] }}</span>
+    <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_labels[order.order_type] }}</span>
   </p>
   {% if order.status.value != "cancelled" %}
-  {% set steps = ["Eingegangen", "In Zubereitung", "Fertig", "Abgeschlossen"] %}
+  {% set steps = ["Eingegangen", "In Zubereitung", ("Unterwegs" if order.order_type.value == "delivery" else "Abholbereit"), "Abgeschlossen"] %}
   {% set idx = ["received", "preparing", "ready", "completed"].index(order.status.value) %}
   <ol class="progress" aria-label="Fortschritt">
     {% for step in steps %}<li class="{{ 'done' if loop.index0 < idx else ('now' if loop.index0 == idx else '') }}">{{ step }}</li>{% endfor %}

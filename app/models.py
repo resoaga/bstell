@@ -67,6 +67,12 @@ class MenuItem(Base):
     is_new = Column(Boolean, default=False)
     sort_order = Column(Integer, default=0)
     image_filename = Column(String, default="")
+    # Temporary sold-out set from the shop (Freiwirt): orderable again after this moment
+    sold_out_until = Column(DateTime, nullable=True)
+
+    @property
+    def temp_sold_out(self) -> bool:
+        return bool(self.sold_out_until and self.sold_out_until > datetime.now())
 
     category = relationship("Category", back_populates="items")
     option_links = relationship(
@@ -152,6 +158,13 @@ class Order(Base):
     )
 
     @property
+    def customer_status_label(self) -> str:
+        """What the customer sees: a finished order is 'unterwegs' (delivery) or 'abholbereit' (pickup)."""
+        if self.status == OrderStatus.ready:
+            return "Unterwegs" if self.order_type == OrderType.delivery else "Abholbereit"
+        return ORDER_STATUS_LABELS[self.status]
+
+    @property
     def goods_total(self) -> float:
         return sum(i.unit_price * i.quantity for i in self.items)
 
@@ -218,6 +231,8 @@ class RestaurantSettings(Base):
     accepting_orders = Column(Boolean, default=True)
     pickup_enabled = Column(Boolean, default=True)
     delivery_enabled = Column(Boolean, default=True)
+    # Pre-orders: how many minutes before opening the shop already takes orders
+    preorder_minutes = Column(Integer, default=60)
     minimum_order_value = Column(Float, default=0.0)
     delivery_fee = Column(Float, default=0.0)
     # Optional surcharge for every order: a percentage of the goods total or a fixed amount

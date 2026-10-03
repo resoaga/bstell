@@ -17,6 +17,8 @@ COLUMNS = [
     ("restaurant_settings", "service_fee_fixed", "FLOAT DEFAULT 0"),
     ("restaurant_settings", "service_fee_label", "VARCHAR DEFAULT 'Servicegebühr'"),
     ("orders", "service_fee", "FLOAT DEFAULT 0"),
+    ("menu_items", "sold_out_until", "DATETIME"),
+    ("restaurant_settings", "preorder_minutes", "INTEGER DEFAULT 60"),
     ("orders", "email", "VARCHAR DEFAULT ''"),
     ("orders", "device_key", "VARCHAR DEFAULT ''"),
     ("orders", "tracking_token", "VARCHAR DEFAULT ''"),

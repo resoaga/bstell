@@ -86,7 +86,7 @@ def resolve_cart_lines(request: Request, db: Session):
                 "unit_price": unit_price,
                 "quantity": quantity,
                 "line_total": line_total,
-                "blocked_until": availability.blocked_until(rules, item.category_id, item.id),
+                "blocked_until": availability.combined_block(rules, item),
             }
         )
         total += line_total

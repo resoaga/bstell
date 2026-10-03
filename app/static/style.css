@@ -365,6 +365,7 @@ body.site .status-pill {
 }
 body.site .status-strip { justify-content: space-between; }
 body.site .status-pill.status-open { background: #e6f4ea; color: #1e7e34; }
+body.site .status-pill.status-preorder { background: #fff4d6; color: #8a5a00; }
 body.site .status-pill.status-paused { background: #fdecea; color: #c0392b; }
 body.site .status-pill.status-closed { background: #eee; color: #666; }
 body.site .status-address { color: #6b6b6b; text-decoration: none; }

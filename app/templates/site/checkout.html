@@ -3,6 +3,7 @@
 <h1 class="page-title">Kasse</h1>
 
 {% if error %}<p class="notice">{{ error }}</p>{% endif %}
+{% if shop.state == "preorder" %}<p class="notice ok">Vorbestellung: Wir öffnen um {{ shop.opens_text }}. Lieferung oder Abholung erfolgt ab dann, nicht früher.</p>{% endif %}
 
 <section class="category">
   <h2>Deine Bestellung</h2>

@@ -2,11 +2,11 @@
 fixed set of editable legal pages, shared between the admin and the
 public-facing site routers."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from .models import CONTENT_PAGE_DEFAULTS, ContentPage, OpeningHour, RestaurantSettings
+from .models import CONTENT_PAGE_DEFAULTS, WEEKDAY_LABELS, ContentPage, OpeningHour, RestaurantSettings
 
 
 def get_opening_hours_by_weekday(db: Session) -> dict:
@@ -23,6 +23,29 @@ def is_currently_open(hours_by_weekday: dict) -> bool:
         if window.open_time <= current_time <= window.close_time:
             return True
     return False
+
+
+def shop_status(hours_by_weekday: dict, preorder_minutes: int, now: datetime = None) -> dict:
+    """state: open | preorder (within preorder_minutes before opening) | closed.
+    opens_text says when the shop opens next ("12:00", "morgen 11:00", "Mo 11:00")."""
+    now = now or datetime.now()
+    current = now.strftime("%H:%M")
+    windows = sorted(hours_by_weekday.get(now.weekday(), []), key=lambda w: w.open_time)
+    for w in windows:
+        if w.open_time <= current <= w.close_time:
+            return {"state": "open", "opens_text": ""}
+    for w in windows:
+        if current < w.open_time:
+            opens = datetime.combine(now.date(), datetime.strptime(w.open_time, "%H:%M").time())
+            state = "preorder" if opens - now <= timedelta(minutes=preorder_minutes or 0) else "closed"
+            return {"state": state, "opens_text": w.open_time}
+    for offset in range(1, 8):
+        day = (now.weekday() + offset) % 7
+        next_windows = sorted(hours_by_weekday.get(day, []), key=lambda w: w.open_time)
+        if next_windows:
+            when = "morgen" if offset == 1 else WEEKDAY_LABELS[day][:2]
+            return {"state": "closed", "opens_text": f"{when} {next_windows[0].open_time}"}
+    return {"state": "closed", "opens_text": ""}
 
 
 def get_settings(db: Session) -> RestaurantSettings:

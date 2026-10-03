@@ -1,4 +1,5 @@
 import io
+from datetime import datetime
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -298,7 +299,10 @@ def toggle_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     item = db.get(MenuItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
-    item.is_available = not item.is_available
+    if item.temp_sold_out:
+        item.sold_out_until = None  # "Wieder verfügbar" also ends a temporary sold-out
+    else:
+        item.is_available = not item.is_available
     db.commit()
     return templates.TemplateResponse(
         "admin/_sold_out_button.html", {"request": request, "item": item}
@@ -759,6 +763,7 @@ def update_ordering_settings(
     delivery_enabled: bool = Form(False),
     minimum_order_value: float = Form(0.0),
     delivery_fee: float = Form(0.0),
+    preorder_minutes: int = Form(60),
     service_fee_enabled: bool = Form(False),
     service_fee_mode: str = Form("percent"),
     service_fee_value: float = Form(0.0),
@@ -766,6 +771,7 @@ def update_ordering_settings(
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
+    settings.preorder_minutes = max(0, min(preorder_minutes, 240))
     settings.service_fee_enabled = service_fee_enabled
     if service_fee_mode == "fixed":
         settings.service_fee_mode = "fixed"

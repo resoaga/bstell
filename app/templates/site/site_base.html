@@ -34,15 +34,15 @@
   {% if my_active_order %}
   <a class="order-bar" href="/verfolgen">
     <span>Deine Bestellung #{{ my_active_order.id }}</span>
-    <span class="status-badge status-{{ my_active_order.status.value }}">{{ {"received": "Eingegangen", "preparing": "In Zubereitung", "ready": "Fertig"}[my_active_order.status.value] }}</span>
+    <span class="status-badge status-{{ my_active_order.status.value }}">{{ my_active_order.customer_status_label if my_active_order.status.value != "received" else "Eingegangen" }}</span>
     <span class="order-bar-go">Verfolgen →</span>
   </a>
   {% endif %}
 
-  {% set shop_state = "open" if (is_open and settings.accepting_orders) else ("paused" if is_open else "closed") %}
+  {% set shop_state = "paused" if (not settings.accepting_orders and shop.state != "closed") else ("closed" if shop.state == "closed" else ("preorder" if shop.state == "preorder" else "open")) %}
   <div class="status-strip">
     <span class="status-pill status-{{ shop_state }}">
-      {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% endif %}
+      {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "preorder" %}Vorbestellung möglich · öffnet {{ shop.opens_text }}{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% if shop.opens_text %} · öffnet {{ shop.opens_text }}{% endif %}{% endif %}
     </span>
     {% if settings.address_street %}
     {% set maps_url = "https://www.google.com/maps/search/?api=1&query=" ~ ((settings.address_street ~ ", " ~ settings.address_zip ~ " " ~ settings.address_city) | urlencode) %}
