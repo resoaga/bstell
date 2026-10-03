@@ -5,7 +5,7 @@
 
 <section class="category">
   <h2>Öffnungszeiten</h2>
-  <p class="hint">Pro Tag beliebig viele Zeitfenster möglich — z.B. Mittag und Abend getrennt. Ein Tag ohne Zeitfenster gilt als geschlossen.</p>
+  <p class="hint">So geht's: bei dem Tag <strong>Von</strong> und <strong>Bis</strong> eintragen (die vorgegebenen 11:00–22:00 sind nur ein Vorschlag) und auf <strong>"Zeitfenster speichern"</strong> klicken. Erst dieser Klick speichert. Danach steht die Zeit unter dem Tag. Pro Tag sind beliebig viele Zeitfenster möglich, z.B. Mittag und Abend getrennt. Ein Tag ohne Zeitfenster gilt als geschlossen. Das Ende bitte als 23:59 statt 00:00 eintragen. Mit dem × löschst du ein Zeitfenster.</p>
   {% for weekday in range(7) %}
   {% with windows = hours_by_weekday[weekday], weekday_label = weekday_labels[weekday] %}
   {% include "admin/_opening_hour_day.html" %}

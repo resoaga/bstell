@@ -19,10 +19,10 @@
         hx-post="/admin/settings/hours/{{ weekday }}/windows" hx-target="#opening-hour-day-{{ weekday }}"
         hx-swap="outerHTML" class="inline-form opening-hour-add-form">
     <div class="opening-hour-times">
-      <input type="time" name="open_time" value="11:00">
+      <input type="time" name="open_time" value="11:00" aria-label="Von">
       <span class="opening-hour-sep">–</span>
-      <input type="time" name="close_time" value="22:00">
+      <input type="time" name="close_time" value="22:00" aria-label="Bis">
     </div>
-    <button type="submit">+ Zeitfenster</button>
+    <button type="submit">Zeitfenster speichern</button>
   </form>
 </div>
