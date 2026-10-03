@@ -103,17 +103,17 @@ def round_to_5_rappen(amount: float) -> float:
 
 
 def service_fee_for(settings, goods_total: float) -> float:
-    """Surcharge on every order (cash and card alike): either a percentage of the
-    goods total or a fixed amount. Computed from the settings only, never from
+    """Surcharge on every order (cash and card alike): a percentage of the
+    goods total, a fixed amount, or both added together. Computed from the settings only, never from
     anything the browser sends; 0 when off or the cart is empty. No VAT is added.
     The fee is rounded so that goods + fee lands on a 5-Rappen amount, which is
     what the customer pays; delivery fees are entered in 0.05 steps in the admin.
     This one function feeds both the displayed totals and the stored order."""
     if not settings.service_fee_enabled or goods_total <= 0:
         return 0.0
-    if settings.service_fee_mode == "fixed":
-        raw = settings.service_fee_fixed or 0.0
-    else:
-        raw = goods_total * (settings.service_fee_percent or 0.0) / 100.0
+    mode = settings.service_fee_mode
+    percent = 0.0 if mode == "fixed" else (settings.service_fee_percent or 0.0)
+    fixed = 0.0 if mode == "percent" else (settings.service_fee_fixed or 0.0)
+    raw = goods_total * percent / 100.0 + fixed
     fee = round(round_to_5_rappen(goods_total + raw) - goods_total, 2)
     return max(0.0, fee)

@@ -33,23 +33,21 @@
       <input type="checkbox" name="service_fee_enabled" value="true" {{ "checked" if settings.service_fee_enabled else "" }}>
       Servicegebühr auf den Warenwert erheben
     </label>
-    <label>Art der Servicegebühr
-      <select name="service_fee_mode">
-        <option value="percent" {{ "selected" if settings.service_fee_mode != "fixed" else "" }}>Prozent vom Warenwert</option>
-        <option value="fixed" {{ "selected" if settings.service_fee_mode == "fixed" else "" }}>Fester Betrag pro Bestellung (CHF)</option>
-      </select>
+    <label>Prozent vom Warenwert (%)
+      <input type="number" step="0.1" min="0" max="20" name="service_fee_percent"
+             value="{{ settings.service_fee_percent if settings.service_fee_mode != 'fixed' else 0 }}">
     </label>
-    <label>Wert (Prozent: 2 = 2 %, fester Betrag: 3 = CHF 3.00)
-      <input type="number" step="0.05" min="0" name="service_fee_value"
-             value="{{ settings.service_fee_fixed if settings.service_fee_mode == 'fixed' else settings.service_fee_percent }}">
+    <label>plus fester Betrag pro Bestellung (CHF)
+      <input type="number" step="0.05" min="0" max="50" name="service_fee_fixed"
+             value="{{ settings.service_fee_fixed if settings.service_fee_mode != 'percent' else 0 }}">
     </label>
+    <p class="hint">Beides wird zusammengezählt, ein Feld darf 0 sein. Beispiel 2 % + 0.30: bei 30 CHF Warenwert sind das 0.60 + 0.30 = 0.90, gerundet auf 5 Rappen.</p>
     <label>Bezeichnung für den Kunden
       <input type="text" name="service_fee_label" value="{{ settings.service_fee_label }}" maxlength="40">
     </label>
     <p class="hint">
       Wird als eigene Zeile im Warenkorb, an der Kasse und in der Bestätigung gezeigt, bevor der Kunde bestellt.
-      Gilt für alle Bestellungen (Bar und Karte). Bei Prozent wird vom Warenwert ohne Lieferkosten gerechnet (max. 20 %),
-      der feste Betrag wird einfach addiert (max. 50 CHF). Es wird keine zusätzliche MwSt. berechnet, die Preise sind inkl. MwSt.
+      Gilt für alle Bestellungen (Bar und Karte). Der Prozentsatz wird vom Warenwert ohne Lieferkosten gerechnet (max. 20 %), der feste Betrag max. 50 CHF. Es wird keine zusätzliche MwSt. berechnet, die Preise sind inkl. MwSt.
     </p>
     <button type="submit">Speichern</button>
   </form>

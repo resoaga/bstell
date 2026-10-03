@@ -767,20 +767,18 @@ def update_ordering_settings(
     delivery_fee: float = Form(0.0),
     preorder_minutes: int = Form(60),
     service_fee_enabled: bool = Form(False),
-    service_fee_mode: str = Form("percent"),
-    service_fee_value: float = Form(0.0),
+    service_fee_percent: float = Form(0.0),
+    service_fee_fixed: float = Form(0.0),
     service_fee_label: str = Form("Servicegebühr"),
     db: Session = Depends(get_db),
 ):
     settings = get_settings(db)
     settings.preorder_minutes = max(0, min(preorder_minutes, 240))
     settings.service_fee_enabled = service_fee_enabled
-    if service_fee_mode == "fixed":
-        settings.service_fee_mode = "fixed"
-        settings.service_fee_fixed = max(0.0, min(service_fee_value, 50.0))
-    else:
-        settings.service_fee_mode = "percent"
-        settings.service_fee_percent = max(0.0, min(service_fee_value, 20.0))
+    percent = max(0.0, min(service_fee_percent, 20.0))
+    fixed = max(0.0, min(service_fee_fixed, 50.0))
+    settings.service_fee_percent, settings.service_fee_fixed = percent, fixed
+    settings.service_fee_mode = "mixed" if (percent and fixed) else ("fixed" if fixed else "percent")
     settings.service_fee_label = service_fee_label.strip() or "Servicegebühr"
     settings.accepting_orders = accepting_orders
     settings.pickup_enabled = pickup_enabled

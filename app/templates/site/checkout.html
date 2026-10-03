@@ -27,7 +27,7 @@
       {% endfor %}
     </ul>
   </details>
-  {% if service_fee %}<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode != "fixed" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
+  {% if service_fee %}<p class="cart-sub">{{ settings.service_fee_label }}{% if settings.service_fee_mode == "percent" %} ({{ "%g"|format(settings.service_fee_percent) }} %){% endif %} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
   {% if settings.delivery_enabled and settings.delivery_fee %}<p class="cart-sub" id="co-delivery-row">Lieferung <span>CHF {{ "%.2f"|format(settings.delivery_fee) }}</span></p>{% endif %}
 
   {% if both_types %}
