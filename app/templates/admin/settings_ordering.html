@@ -6,11 +6,7 @@
 <section class="category">
   <form method="post" action="/admin/settings/ordering" class="fform">
     <h2>Bestellannahme</h2>
-    <div class="check-row">
-      <label class="checkbox-label"><input type="checkbox" name="accepting_orders" value="true" {{ "checked" if settings.accepting_orders else "" }}> Bestellungen werden angenommen</label>
-      <label class="checkbox-label"><input type="checkbox" name="pickup_enabled" value="true" {{ "checked" if settings.pickup_enabled else "" }}> Abholung</label>
-      <label class="checkbox-label"><input type="checkbox" name="delivery_enabled" value="true" {{ "checked" if settings.delivery_enabled else "" }}> Lieferung</label>
-    </div>
+    <p class="hint" style="margin:0">Bestellungen, Lieferung und Abholung schaltest du auf der <a href="/admin">Übersicht</a> ein und aus.</p>
     <div class="fgrid">
       <label>Mindestbestellwert (CHF)
         <input type="number" step="0.05" min="0" name="minimum_order_value" value="{{ settings.minimum_order_value }}">
@@ -29,7 +25,6 @@
       </label>
     </div>
     <details class="help"><summary>Erklärungen</summary>
-      <p><b>Bestellungen werden angenommen:</b> aus = Laden ist geschlossen, für alle Bestellwege.</p>
       <p><b>Vorbestellung:</b> ab so vielen Minuten vor der Öffnung nimmt die Webseite schon Bestellungen an (bearbeitet ab Öffnung). Davor und nach Ladenschluss ist Bestellen gesperrt, die Seite zeigt Telefon und Öffnungszeit. 0 = nur zu den Öffnungszeiten.</p>
       <p><b>Max. Bestellungen:</b> wer öfter bestellt, wird gebremst und sieht deine Telefonnummer. Pro Telefonnummer gilt dieser Wert, pro Gerät +2, pro Netzwerk das Doppelte (mindestens 10). Zum Testen kannst du ihn erhöhen.</p>
       <p><b>Erledigte in Live-Ansicht:</b> so viele abgeschlossene oder stornierte Bestellungen der letzten 24 Stunden bleiben unter den offenen sichtbar. Ältere findest du unter Bestellungen → Verlauf.</p>

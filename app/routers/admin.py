@@ -1117,9 +1117,6 @@ def settings_ordering(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/settings/ordering", dependencies=mutating)
 def update_ordering_settings(
-    accepting_orders: bool = Form(False),
-    pickup_enabled: bool = Form(False),
-    delivery_enabled: bool = Form(False),
     minimum_order_value: float = Form(0.0),
     delivery_fee: float = Form(0.0),
     preorder_minutes: int = Form(60),
@@ -1144,10 +1141,6 @@ def update_ordering_settings(
     settings.service_fee_percent, settings.service_fee_fixed = percent, fixed
     settings.service_fee_mode = "mixed" if (percent and fixed) else ("fixed" if fixed else "percent")
     settings.service_fee_label = service_fee_label.strip() or "Servicegebühr"
-    settings.accepting_orders = accepting_orders
-    settings.order_override = ""
-    settings.pickup_enabled = pickup_enabled
-    settings.delivery_enabled = delivery_enabled
     settings.minimum_order_value = minimum_order_value
     settings.delivery_fee = delivery_fee
     db.commit()
