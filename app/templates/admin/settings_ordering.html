@@ -24,9 +24,13 @@
     </label>
     <p class="hint">Ab so vielen Minuten vor der Öffnung nimmt die Webseite schon Bestellungen an (sie werden ab Öffnung bearbeitet). Davor und nach Ladenschluss ist Bestellen gesperrt, die Seite zeigt Telefon und Öffnungszeit. 0 = nur zu den Öffnungszeiten.</p>
     <label>Stornierungsgründe (ein Vorschlag pro Zeile)
-      <textarea name="cancel_reasons" rows="6" placeholder="Leer lassen = Standardliste">{{ settings.cancel_reasons or '' }}</textarea>
+      <textarea name="cancel_reasons" rows="7">{{ cancel_reasons_text }}</textarea>
     </label>
-    <p class="hint">Diese Texte kannst du im Admin beim Stornieren mit einem Tipp wählen. Der Kunde sieht den Grund und bekommt ihn per E-Mail.</p>
+    <p class="hint">So sieht die Liste aktuell aus. Du kannst Zeilen ändern, löschen oder neue hinzufügen. Diese Texte wählst du im Admin beim Stornieren mit einem Tipp, der Kunde sieht den Grund und bekommt ihn per E-Mail. Alles löschen und speichern = Standardliste.</p>
+    <label>Max. Bestellungen pro Kunde und Stunde (Schutz vor Missbrauch)
+      <input type="number" name="order_limit_per_hour" min="1" max="50" value="{{ settings.order_limit_per_hour or 5 }}">
+    </label>
+    <p class="hint">Wer öfter bestellt, wird gebremst und sieht deine Telefonnummer. Pro Telefonnummer gilt dieser Wert, pro Gerät +2, pro Netzwerk das Doppelte (mindestens 10). Zum Testen kannst du ihn erhöhen.</p>
     <label>Mindestbestellwert (CHF)
       <input type="number" step="0.05" min="0" name="minimum_order_value" value="{{ settings.minimum_order_value }}">
     </label>

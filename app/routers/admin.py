@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import secrets
 import uuid
 from typing import List, Optional
+from urllib.parse import quote_plus
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -836,7 +837,8 @@ def delete_time_rule(rule_id: int, db: Session = Depends(get_db)):
 @router.get("/settings/ordering")
 def settings_ordering(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
-        "admin/settings_ordering.html", {"request": request, **settings_context("ordering", db)}
+        "admin/settings_ordering.html",
+        {"request": request, "cancel_reasons_text": "\n".join(_cancel_reasons(db)), **settings_context("ordering", db)},
     )
 
 
@@ -849,6 +851,7 @@ def update_ordering_settings(
     delivery_fee: float = Form(0.0),
     preorder_minutes: int = Form(60),
     cancel_reasons: str = Form(""),
+    order_limit_per_hour: int = Form(5),
     service_fee_enabled: bool = Form(False),
     service_fee_percent: float = Form(0.0),
     service_fee_fixed: float = Form(0.0),
@@ -857,7 +860,9 @@ def update_ordering_settings(
 ):
     settings = get_settings(db)
     settings.preorder_minutes = max(0, min(preorder_minutes, 240))
-    settings.cancel_reasons = "\n".join(l.strip()[:120] for l in cancel_reasons.splitlines() if l.strip())[:2000]
+    settings.order_limit_per_hour = max(1, min(order_limit_per_hour, 50))
+    cleaned = [l.strip()[:120] for l in cancel_reasons.splitlines() if l.strip()]
+    settings.cancel_reasons = "" if cleaned == DEFAULT_CANCEL_REASONS else "\n".join(cleaned)[:2000]
     settings.service_fee_enabled = service_fee_enabled
     percent = max(0.0, min(service_fee_percent, 20.0))
     fixed = max(0.0, min(service_fee_fixed, 50.0))
@@ -885,7 +890,12 @@ def regenerate_freiwirt_token(db: Session = Depends(get_db)):
 def settings_delivery_zone(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_delivery_zone.html",
-        {"request": request, **settings_context("delivery-zone", db)},
+        {
+            "request": request,
+            "zips": _zip_list(get_settings(db)),
+            "error": request.query_params.get("error", ""),
+            **settings_context("delivery-zone", db),
+        },
     )
 
 
@@ -902,10 +912,33 @@ def update_delivery_zone_settings(
     return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
 
 
-@router.post("/settings/delivery-zips", dependencies=mutating)
-def update_delivery_zips(delivery_zips: str = Form(""), db: Session = Depends(get_db)):
+def _zip_list(settings) -> list:
+    return sorted({z for z in re.split(r"[\s,;]+", settings.delivery_zips or "") if z})
+
+
+@router.post("/settings/delivery-zips/add", dependencies=mutating)
+def add_delivery_zips(zips: str = Form(""), db: Session = Depends(get_db)):
     settings = get_settings(db)
-    settings.delivery_zips = ", ".join(z for z in re.split(r"[\s,;]+", delivery_zips) if z)[:500]
+    tokens = [z for z in re.split(r"[\s,;]+", zips) if z]
+    valid = [z for z in tokens if re.fullmatch(r"\d{4}", z)]
+    invalid = [z for z in tokens if z not in valid]
+    settings.delivery_zips = ", ".join(sorted(set(_zip_list(settings)) | set(valid)))
+    db.commit()
+    error = f"?error={quote_plus('Keine gültige PLZ (4 Ziffern): ' + ', '.join(invalid))}" if invalid else ""
+    return RedirectResponse(url="/admin/settings/delivery-zone" + error, status_code=303)
+
+
+@router.post("/settings/delivery-zips/remove", dependencies=mutating)
+def remove_delivery_zip(zip: str = Form(""), db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    settings.delivery_zips = ", ".join(z for z in _zip_list(settings) if z != zip.strip())
+    db.commit()
+    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
+
+
+@router.post("/settings/delivery-zips/clear", dependencies=mutating)
+def clear_delivery_zips(db: Session = Depends(get_db)):
+    get_settings(db).delivery_zips = ""
     db.commit()
     return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
 

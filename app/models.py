@@ -257,6 +257,7 @@ class RestaurantSettings(Base):
     footer_credit = Column(String, default="")
     vat_number = Column(String, default="")  # UID / MWST-Nr., printed on the receipt when set
     attach_receipt_pdf = Column(Boolean, default=False, nullable=False)
+    order_limit_per_hour = Column(Integer, default=5)  # abuse protection: max orders per customer and hour
     cancel_reasons = Column(Text, default="")  # one preset per line; empty = built-in defaults  # free text under the opening hours (e.g. special days)
     phone = Column(String, default="")
     email = Column(String, default="")

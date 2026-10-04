@@ -13,29 +13,28 @@ from .models import PAYMENT_LABELS, Order, OrderStatus, OrderType
 
 # In-memory sliding window per client IP (resets on restart, stores no personal data)
 _ip_hits = defaultdict(deque)
-MAX_ORDERS_PER_IP_PER_HOUR = 8
-MAX_ORDERS_PER_PHONE_PER_HOUR = 4
+DEFAULT_ORDERS_PER_HOUR = 5  # per phone number; per device +2; per IP twice (min 10) - shared Wi-Fi
 MIN_SECONDS_ON_CHECKOUT = 1  # prefilled forms can legitimately be sent within seconds
 
 
-def ip_limit_reached(ip: str) -> bool:
+def ip_limit_reached(ip: str, limit: int = DEFAULT_ORDERS_PER_HOUR) -> bool:
     now = time.time()
     hits = _ip_hits[ip]
     while hits and now - hits[0] > 3600:
         hits.popleft()
-    return len(hits) >= MAX_ORDERS_PER_IP_PER_HOUR
+    return len(hits) >= max(10, limit * 2)
 
 
 def register_ip(ip: str) -> None:
     _ip_hits[ip].append(time.time())
 
 
-def phone_or_device_limit_reached(db: Session, phone: str, device_key: str) -> bool:
+def phone_or_device_limit_reached(db: Session, phone: str, device_key: str, limit: int = DEFAULT_ORDERS_PER_HOUR) -> bool:
     since = datetime.utcnow() - timedelta(hours=1)
     recent = db.query(Order).filter(Order.created_at >= since, Order.status != OrderStatus.cancelled)
     return (
-        recent.filter(Order.phone == phone).count() >= MAX_ORDERS_PER_PHONE_PER_HOUR
-        or recent.filter(Order.device_key == device_key).count() >= MAX_ORDERS_PER_PHONE_PER_HOUR + 2
+        recent.filter(Order.phone == phone).count() >= limit
+        or recent.filter(Order.device_key == device_key).count() >= limit + 2
     )
 
 

@@ -455,7 +455,8 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
         too_fast = True
     if form.get("hp_trap") or too_fast:
         return error_response("Das ging zu schnell. Bitte kurz prüfen und noch einmal absenden.")
-    if orderflow.ip_limit_reached(ip) or orderflow.phone_or_device_limit_reached(db, phone, device_key):
+    limit = settings.order_limit_per_hour or orderflow.DEFAULT_ORDERS_PER_HOUR
+    if orderflow.ip_limit_reached(ip, limit) or orderflow.phone_or_device_limit_reached(db, phone, device_key, limit):
         return error_response("Zu viele Bestellungen in kurzer Zeit. Bitte rufe uns kurz an" + (f": {settings.phone}" if settings.phone else "") + ".")
     orderflow.register_ip(ip)
     service_fee = cart_lib.service_fee_for(settings, total)

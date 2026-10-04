@@ -1018,3 +1018,11 @@ body.site .order-card:has(.cancel-banner) { border-color: #d92d20; }
 /* Options dialog: lock the page behind it, scroll only inside the dialog */
 body.site:has(dialog[open]) { overflow: hidden; }
 body.site .item-dialog { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
+/* Admin: delivery-area chips */
+.zip-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 10px 0; }
+.zip-chips li { display: inline-flex; align-items: center; gap: 2px; background: #e8f0fe; color: #1a56c4; border-radius: 20px; padding: 4px 4px 4px 14px; font-weight: 700; }
+.zip-chips form { margin: 0; }
+.zip-x { background: none; border: 0; color: #1a56c4; font-size: 20px; line-height: 1; width: 30px; height: 30px; min-height: 0; padding: 0; border-radius: 50%; cursor: pointer; }
+.zip-x:hover, .zip-x:active { background: #c62828; color: #fff; }
+.zip-add { margin-top: 14px; }

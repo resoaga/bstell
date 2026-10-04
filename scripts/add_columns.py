@@ -22,6 +22,7 @@ COLUMNS = [
     ("restaurant_settings", "footer_credit", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "vat_number", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "cancel_reasons", "TEXT DEFAULT ''"),
+    ("restaurant_settings", "order_limit_per_hour", "INTEGER DEFAULT 5"),
     ("orders", "service_fee_text", "VARCHAR DEFAULT ''"),
     ("orders", "cancel_reason", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "attach_receipt_pdf", "BOOLEAN NOT NULL DEFAULT 0"),

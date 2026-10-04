@@ -6,15 +6,33 @@
 <section class="category">
   <h2>Liefergebiet (Postleitzahlen)</h2>
   <p class="hint">
-    Trage die PLZ ein, in die geliefert wird, getrennt durch Komma oder Leerzeichen, z.B. <code>8000, 8001, 8002</code>.
-    Die Webseite prüft sofort bei der Eingabe an der Kasse und noch einmal beim Absenden. Leer lassen = Lieferung überall.
-    Abholung ist davon nicht betroffen.
+    Hier stehen alle PLZ, in die geliefert wird. Die Webseite prüft an der Kasse sofort bei der Eingabe und noch einmal beim Absenden.
+    <strong>Ist die Liste leer, wird überall hin geliefert.</strong> Abholung ist davon nicht betroffen.
   </p>
-  <form method="post" action="/admin/settings/delivery-zips">
-    <label>Erlaubte PLZ
-      <textarea name="delivery_zips" rows="2">{{ settings.delivery_zips }}</textarea>
+  {% if error %}<p class="notice">{{ error }}</p>{% endif %}
+  {% if zips %}
+  <ul class="zip-chips">
+    {% for z in zips %}
+    <li>
+      <span>{{ z }}</span>
+      <form method="post" action="/admin/settings/delivery-zips/remove" class="inline">
+        <input type="hidden" name="zip" value="{{ z }}">
+        <button type="submit" class="zip-x" aria-label="PLZ {{ z }} entfernen" title="Entfernen">×</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="/admin/settings/delivery-zips/clear" class="inline" onsubmit="return confirm('Alle PLZ löschen? Danach wird überall hin geliefert.')">
+    <button type="submit" class="danger small">Alle entfernen</button>
+  </form>
+  {% else %}
+  <p class="empty">Noch keine PLZ eingetragen – es wird überall hin geliefert.</p>
+  {% endif %}
+  <form method="post" action="/admin/settings/delivery-zips/add" class="zip-add">
+    <label>PLZ hinzufügen (eine oder mehrere, durch Leerzeichen oder Komma getrennt)
+      <input type="text" name="zips" inputmode="numeric" placeholder="z.B. 4133 4132 4127" autocomplete="off" required>
     </label>
-    <button type="submit">Speichern</button>
+    <button type="submit">Hinzufügen</button>
   </form>
 </section>
 
