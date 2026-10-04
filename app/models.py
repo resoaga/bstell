@@ -88,6 +88,7 @@ class MenuItem(Base):
     is_available = Column(Boolean, default=True)
     is_new = Column(Boolean, default=False)
     is_vegetarian = Column(Boolean, default=False, nullable=False)
+    is_hot = Column(Boolean, default=False, nullable=False)  # manual "Hot" badge
     sort_order = Column(Integer, default=0)
     image_filename = Column(String, default="")
     # Temporary sold-out set from the shop (Freiwirt): orderable again after this moment

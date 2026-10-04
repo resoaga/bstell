@@ -1029,3 +1029,42 @@ body.site .item-dialog { overscroll-behavior: contain; -webkit-overflow-scrollin
 
 /* Vegetarian seal on menu cards */
 body.site .veg-badge { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; margin-left: 4px; padding: 2px 7px; border-radius: 10px; background: #e3f4e6; color: #1e7e34; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+/* ---- Hero: most sold this week (swipe row on phones, three columns on wide screens) ---- */
+body.site .badge-top { background: var(--ink); }
+body.site .badge-hot { background: #e8590c; }
+body.site .hero-top { display: block; padding: 22px 0 24px; }
+body.site .top-head { padding: 0 16px; margin-bottom: 12px; }
+body.site .top-head h2 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; color: var(--ink); }
+body.site .top-row {
+  display: flex; gap: 12px; padding: 2px 16px 6px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+body.site .top-row::-webkit-scrollbar { display: none; }
+body.site .top-card {
+  position: relative; flex: 0 0 78%; max-width: 320px; scroll-snap-align: start;
+  display: flex; flex-direction: column; background: #fff; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 6px 16px rgba(120, 70, 10, 0.18);
+}
+body.site .top-rank {
+  position: absolute; top: 8px; left: 8px; z-index: 1; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px;
+}
+body.site .top-photo { aspect-ratio: 4 / 3; background: var(--paper); }
+body.site .top-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+body.site .top-body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; flex: 1; }
+body.site .top-card:not(:has(.top-photo)) .top-body { padding-top: 44px; }
+body.site .top-body strong { font-size: 17px; line-height: 1.25; }
+body.site .top-body p { margin: 0; font-size: 13.5px; color: #6b6b6b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.site .top-buy { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 8px; }
+body.site .top-buy form { margin: 0; }
+body.site .top-price { font-size: 19px; font-weight: 800; color: var(--accent); }
+body.site .top-buy .btn-primary { padding: 10px 18px; }
+@media (min-width: 720px) {
+  body.site .hero-top { padding: 28px 20px 30px; }
+  body.site .top-head { padding: 0; }
+  body.site .top-row { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; padding: 2px 0; }
+  body.site .top-row:has(.top-card:nth-child(2):last-child) { grid-template-columns: repeat(2, 1fr); }
+  body.site .top-row:has(.top-card:only-child) { grid-template-columns: minmax(0, 360px); }
+  body.site .top-card { flex: none; max-width: none; }
+}

@@ -1,0 +1,7 @@
+<button
+  class="new-btn {{ 'is-hot' if item.is_hot else '' }}"
+  hx-post="/admin/items/{{ item.id }}/toggle-hot"
+  hx-swap="outerHTML"
+>
+  {% if item.is_hot %}Hot entfernen{% else %}Als Hot markieren{% endif %}
+</button>

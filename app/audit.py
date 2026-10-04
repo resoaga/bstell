@@ -10,7 +10,6 @@ from .models import AuditLog
 ACTIONS = [
     (r"^/quick/", "Schalter umgelegt"),
     (r"^/categories$", "Kategorie angelegt"),
-    (r"^/categories/\d+/promo$", "Hero-Aktion einer Kategorie umgeschaltet"),
     (r"^/categories/\d+/delete$", "Kategorie gelöscht"),
     (r"^/items/new$", "Artikel angelegt"),
     (r"^/items/\d+/edit$", "Artikel geändert"),
@@ -18,6 +17,7 @@ ACTIONS = [
     (r"^/items/\d+/delete$", "Artikel gelöscht"),
     (r"^/items/\d+/toggle$", "Ausverkauft umgeschaltet"),
     (r"^/items/\d+/toggle-new$", "Neu-Markierung umgeschaltet"),
+    (r"^/items/\d+/toggle-hot$", "Hot-Markierung umgeschaltet"),
     (r"^/items/\d+/option-links$", "Optionsgruppe einem Artikel zugewiesen"),
     (r"^/option-links/\d+/update$", "Zuweisung einer Optionsgruppe geändert"),
     (r"^/option-links/\d+/delete$", "Optionsgruppe bei Artikel entfernt"),

@@ -4,9 +4,22 @@ public-facing site routers."""
 
 from datetime import datetime, timedelta
 
+import time
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .models import CONTENT_PAGE_DEFAULTS, WEEKDAY_LABELS, ContentPage, OpeningHour, RestaurantSettings
+from .models import (
+    CONTENT_PAGE_DEFAULTS,
+    WEEKDAY_LABELS,
+    ContentPage,
+    MenuItem,
+    OpeningHour,
+    Order,
+    OrderItem,
+    OrderStatus,
+    RestaurantSettings,
+)
 
 
 def get_opening_hours_by_weekday(db: Session) -> dict:
@@ -94,3 +107,29 @@ def get_all_content_pages(db: Session):
             db.add(ContentPage(slug=slug, title=title, body=body))
     db.commit()
     return db.query(ContentPage).order_by(ContentPage.id).all()
+
+
+TOP_DAYS = 7
+TOP_COUNT = 3
+TOP_MIN_QTY = 3  # an article must have sold at least this often to count as "most sold"
+_top_cache = {"at": 0.0, "ids": []}
+
+
+def top_seller_ids(db: Session) -> list:
+    """Ids of the best selling available articles of the last 7 days (best first).
+    Cancelled / unpaid orders do not count. Cached for a few minutes."""
+    if time.time() - _top_cache["at"] < 300:
+        return _top_cache["ids"]
+    since = datetime.utcnow() - timedelta(days=TOP_DAYS)
+    rows = (
+        db.query(OrderItem.item_name, func.sum(OrderItem.quantity).label("qty"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(Order.created_at >= since, Order.status.notin_((OrderStatus.cancelled, OrderStatus.awaiting_payment)))
+        .group_by(OrderItem.item_name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .all()
+    )
+    by_name = {i.name: i.id for i in db.query(MenuItem).filter(MenuItem.is_available == True).all()}  # noqa: E712
+    ids = [by_name[name] for name, qty in rows if qty >= TOP_MIN_QTY and name in by_name][:TOP_COUNT]
+    _top_cache.update(at=time.time(), ids=ids)
+    return ids

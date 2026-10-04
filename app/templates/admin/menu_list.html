@@ -18,14 +18,11 @@
 {% for category in categories %}
 <section class="category" id="cat-{{ category.id }}">
   <div class="category-header">
-    <h2>{{ category.name }}{% if category.is_promo %} <span class="tag">· Aktion im Hero</span>{% endif %}</h2>
+    <h2>{{ category.name }}</h2>
     <a class="add-item" href="/admin/items/new?category_id={{ category.id }}" style="margin:0">+ Artikel</a>
     <details class="more">
       <summary aria-label="Mehr für {{ category.name }}">⋯</summary>
       <div class="more-menu">
-        <form method="post" action="/admin/categories/{{ category.id }}/promo">
-          <button type="submit">{{ "Nicht mehr im Hero zeigen" if category.is_promo else "Im Hero zeigen (Aktion)" }}</button>
-        </form>
         <form method="post" action="/admin/categories/{{ category.id }}/delete"
               data-confirm="Kategorie „{{ category.name }}“ und alle {{ category.items|length }} Artikel darin löschen?">
           <button type="submit" class="danger">Kategorie löschen</button>
@@ -40,13 +37,14 @@
       <img class="item-thumb" src="/static/uploads/{{ item.image_filename }}" alt="" loading="lazy">
       {% endif %}
       <div class="item-info">
-        <strong>{{ item.name }}</strong>{% if item.is_vegetarian %} <span class="veg" title="Vegetarisch">V</span>{% endif %}
+        <strong>{{ item.name }}</strong>{% if item.is_vegetarian %} <span class="veg" title="Vegetarisch">V</span>{% endif %}{% if item.id in top_ids %} <span class="top-tag" title="Meistverkauft der letzten 7 Tage">Meistverkauft</span>{% endif %}
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
       </div>
       <div class="item-actions">
         {% include "admin/_sold_out_button.html" %}
         {% include "admin/_new_button.html" %}
+        {% include "admin/_hot_button.html" %}
         <a href="/admin/items/{{ item.id }}/edit">Bearbeiten</a>
       </div>
     </div>

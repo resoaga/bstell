@@ -40,6 +40,7 @@ from ..repo import (
     is_currently_open,
     effective_shop,
     shop_status,
+    top_seller_ids,
 )
 
 router = APIRouter()
@@ -167,13 +168,9 @@ def homepage(request: Request, db: Session = Depends(get_db)):
             timed = [t for t in times if t != "sold"]
             if timed and len(timed) == len(times):
                 cat_block[category.id] = availability.describe(max(timed))
-    promo_items = [
-        item
-        for category in categories
-        if category.is_promo
-        for item in category.items
-        if item.is_available and item.id not in item_block
-    ][:5]
+    top_ids = top_seller_ids(db)
+    by_id = {item.id: item for category in categories for item in category.items}
+    promo_items = [by_id[i] for i in top_ids if i in by_id and i not in item_block]
     return templates.TemplateResponse(
         "site/index.html",
         {
@@ -182,6 +179,7 @@ def homepage(request: Request, db: Session = Depends(get_db)):
             "cat_block": cat_block,
             "categories": categories,
             "promo_items": promo_items,
+            "top_ids": top_ids,
             **site_extra(request, db),
         },
     )

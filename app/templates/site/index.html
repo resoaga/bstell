@@ -1,32 +1,39 @@
 {% extends "site/site_base.html" %}
 {% block content %}
 {% if promo_items %}
-<section class="hero hero-promo" data-autorotate="{{ 'true' if promo_items|length > 1 else 'false' }}">
-  {% for item in promo_items %}
-  <div class="promo-slide{{ ' is-active' if loop.first else '' }}">
-    {% if item.image_filename %}
-    <div class="promo-photo"><img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy" onerror="this.parentElement.remove()"></div>
-    {% endif %}
-    <div class="promo-text">
-      <span class="promo-label">Aktion</span>
-      <p class="hero-heading">{{ item.name }}</p>
-      {% if item.description %}<p class="hero-sub">{{ item.description }}</p>{% endif %}
-      <p class="promo-price">CHF {{ "%.2f"|format(item.price) }}</p>
-      {% if not can_order %}
-      <a class="btn-primary" href="#menu-top">Zur Speisekarte</a>
-      {% elif item.option_links %}
-      <button type="button" class="btn-primary" onclick="document.getElementById('dlg-{{ item.id }}').showModal()">Jetzt bestellen</button>
-      {% else %}
-      <form hx-post="/speisekarte/hinzufuegen" hx-target="#hero-feedback-{{ item.id }}" hx-swap="innerHTML">
-        <input type="hidden" name="item_id" value="{{ item.id }}">
-        <input type="hidden" name="qty" value="1">
-        <button type="submit" class="btn-primary">Jetzt bestellen</button>
-      </form>
-      <div id="hero-feedback-{{ item.id }}" class="add-feedback-slot"></div>
-      {% endif %}
-    </div>
+<section class="hero hero-top" aria-labelledby="top-title">
+  <div class="top-head">
+    <h2 id="top-title">Meistverkauft diese Woche</h2>
   </div>
-  {% endfor %}
+  <div class="top-row">
+    {% for item in promo_items %}
+    <article class="top-card">
+      <span class="top-rank" aria-label="Platz {{ loop.index }}">{{ loop.index }}</span>
+      {% if item.image_filename %}
+      <div class="top-photo"><img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy" onerror="this.parentElement.remove()"></div>
+      {% endif %}
+      <div class="top-body">
+        <strong>{{ item.name }}</strong>
+        {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+        <div class="top-buy">
+          <span class="top-price">CHF {{ "%.2f"|format(item.price) }}</span>
+          {% if not can_order %}
+          <a class="btn-primary" href="#menu-top">Zur Karte</a>
+          {% elif item.option_links %}
+          <button type="button" class="btn-primary" onclick="document.getElementById('dlg-{{ item.id }}').showModal()">Bestellen</button>
+          {% else %}
+          <form hx-post="/speisekarte/hinzufuegen" hx-target="#hero-feedback-{{ item.id }}" hx-swap="innerHTML">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <input type="hidden" name="qty" value="1">
+            <button type="submit" class="btn-primary">Bestellen</button>
+          </form>
+          {% endif %}
+        </div>
+        {% if can_order and not item.option_links %}<div id="hero-feedback-{{ item.id }}" class="add-feedback-slot"></div>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
 </section>
 {% else %}
 <section class="hero">
@@ -89,11 +96,11 @@
       {% if item.image_filename %}
       <div class="menu-card-media">
         <img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" width="96" height="96" loading="lazy" decoding="async">
-        {% if item.is_new %}<span class="badge-new">Neu</span>{% endif %}
+        {% if item.is_new %}<span class="badge-new">Neu</span>{% elif item.id in top_ids %}<span class="badge-new badge-top">Meistverkauft</span>{% elif item.is_hot %}<span class="badge-new badge-hot">Hot</span>{% endif %}
       </div>
       {% endif %}
       <div class="menu-card-body">
-        <strong>{{ item.name }}{% if item.is_new and not item.image_filename %} <span class="badge-new inline">Neu</span>{% endif %}{% if item.is_vegetarian %} <span class="veg-badge" title="Vegetarisch"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M20 4C9 4 4 9 4 16c0 1.3.2 2.5.6 3.6C6 15 10 11.5 15 10c-4.1 2.3-7 6-8.2 10.4.9.4 2 .6 3.2.6 7 0 11-5 10-17z"/></svg>Vegetarisch</span>{% endif %}</strong>
+        <strong>{{ item.name }}{% if not item.image_filename %}{% if item.is_new %} <span class="badge-new inline">Neu</span>{% endif %}{% if item.id in top_ids %} <span class="badge-new badge-top inline">Meistverkauft</span>{% endif %}{% if item.is_hot %} <span class="badge-new badge-hot inline">Hot</span>{% endif %}{% endif %}{% if item.is_vegetarian %} <span class="veg-badge" title="Vegetarisch"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M20 4C9 4 4 9 4 16c0 1.3.2 2.5.6 3.6C6 15 10 11.5 15 10c-4.1 2.3-7 6-8.2 10.4.9.4 2 .6 3.2.6 7 0 11-5 10-17z"/></svg>Vegetarisch</span>{% endif %}</strong>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
       </div>
@@ -193,17 +200,6 @@
           section.classList.toggle('is-hidden', query.length > 0 && !visible);
         });
       });
-    }
-
-    var promoSection = document.querySelector('.hero-promo[data-autorotate="true"]');
-    if (promoSection) {
-      var slides = promoSection.querySelectorAll('.promo-slide');
-      var current = 0;
-      setInterval(function () {
-        slides[current].classList.remove('is-active');
-        current = (current + 1) % slides.length;
-        slides[current].classList.add('is-active');
-      }, 4000);
     }
 
     document.querySelectorAll('input[data-group-max]').forEach(function (input) {

@@ -481,3 +481,6 @@ section.category > form.zone-head { display: flex; flex-wrap: wrap; gap: 8px 10p
 .ord-tools { display: flex; gap: 10px; margin-top: 2px; font-size: 12.5px; }
 .ord-tools a, button.linkish { min-height: 0; padding: 0; background: none; border: 0; color: var(--info); font-weight: 600; font-size: 12.5px; text-decoration: none; display: inline; }
 .ord-tools a:hover, button.linkish:hover { background: none; text-decoration: underline; }
+
+.new-btn.is-hot { background: #fde6d6; color: #a83e00; border-color: #f2b88f; }
+.top-tag { margin-left: 4px; padding: 1px 7px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; vertical-align: middle; }

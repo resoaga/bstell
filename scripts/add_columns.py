@@ -25,6 +25,7 @@ COLUMNS = [
     ("restaurant_settings", "order_limit_per_hour", "INTEGER DEFAULT 5"),
     ("restaurant_settings", "orders_done_limit", "INTEGER DEFAULT 3"),
     ("menu_items", "is_vegetarian", "BOOLEAN DEFAULT 0 NOT NULL"),
+    ("menu_items", "is_hot", "BOOLEAN DEFAULT 0 NOT NULL"),
     ("restaurant_settings", "order_override", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "order_override_base", "VARCHAR DEFAULT ''"),
     ("orders", "service_fee_text", "VARCHAR DEFAULT ''"),

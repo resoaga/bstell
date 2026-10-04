@@ -42,7 +42,7 @@ from ..models import (
     OrderStatus,
     SelectionType,
 )
-from ..repo import effective_shop, get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
+from ..repo import top_seller_ids, effective_shop, get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
 
 UPLOAD_DIR = "app/static/uploads"
 
@@ -336,7 +336,8 @@ def dashboard(request: Request, p: str = "7", db: Session = Depends(get_db)):
 def menu_list(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()
     return templates.TemplateResponse(
-        "admin/menu_list.html", {"request": request, "categories": categories}
+        "admin/menu_list.html",
+        {"request": request, "categories": categories, "top_ids": top_seller_ids(db)},
     )
 
 
@@ -344,16 +345,6 @@ def menu_list(request: Request, db: Session = Depends(get_db)):
 def create_category(request: Request, name: str = Form(...), db: Session = Depends(get_db)):
     audit.note(request, name)
     db.add(Category(name=name))
-    db.commit()
-    return RedirectResponse(url="/admin/menu", status_code=303)
-
-
-@router.post("/categories/{category_id}/promo", dependencies=mutating)
-def toggle_category_promo(category_id: int, db: Session = Depends(get_db)):
-    category = db.get(Category, category_id)
-    if category is None:
-        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
-    category.is_promo = not category.is_promo
     db.commit()
     return RedirectResponse(url="/admin/menu", status_code=303)
 
@@ -520,6 +511,17 @@ def toggle_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/_sold_out_button.html", {"request": request, "item": item}
     )
+
+
+@router.post("/items/{item_id}/toggle-hot", dependencies=mutating)
+def toggle_hot(item_id: int, request: Request, db: Session = Depends(get_db)):
+    item = db.get(MenuItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    audit.note(request, item.name)
+    item.is_hot = not item.is_hot
+    db.commit()
+    return templates.TemplateResponse("admin/_hot_button.html", {"request": request, "item": item})
 
 
 @router.post("/items/{item_id}/toggle-new", dependencies=mutating)
