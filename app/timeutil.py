@@ -19,6 +19,13 @@ def fmt_local(dt: datetime, pattern: str = "%d.%m.%Y %H:%M") -> str:
     return to_local(dt).strftime(pattern) if dt else ""
 
 
+def local_midnight_utc() -> datetime:
+    """Start of today in local time, as naive UTC (how orders are stored)."""
+    now = to_local(datetime.utcnow())
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def minutes_ago(dt: datetime) -> int:
     return max(0, int((datetime.utcnow() - dt).total_seconds() // 60))
 

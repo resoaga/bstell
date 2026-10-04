@@ -3,5 +3,5 @@
   hx-post="/admin/items/{{ item.id }}/toggle-new"
   hx-swap="outerHTML"
 >
-  {% if item.is_new %}"Neu"-Markierung entfernen{% else %}Als "Neu" markieren{% endif %}
+  {% if item.is_new %}Neu entfernen{% else %}Als Neu markieren{% endif %}
 </button>

@@ -2,7 +2,7 @@
 {% set mins = order.created_at|minutes_ago %}
 {% set limit = estimate["delivery"] if delivery else estimate["pickup"] %}
 {% set late = order.status.value in ("received", "preparing") and mins > limit %}
-<section class="ord ord-{{ order.status.value }}{{ ' ord-late' if late }}" id="order-{{ order.id }}">
+<section class="ord ord-{{ order.status.value }}{{ ' ord-late' if late }}" id="order-{{ order.id }}" data-status="{{ order.status.value }}" data-kind="{{ order.order_type.value }}">
   <div class="ord-head">
     <div class="ord-id">#{{ order.id }}</div>
     <div class="ord-meta">

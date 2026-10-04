@@ -1,34 +1,48 @@
 {% extends "base.html" %}
+{% block title %}Menü – Admin{% endblock %}
 {% block content %}
-<section class="add-category">
-  <form method="post" action="/admin/categories" class="inline-form">
-    <input type="text" name="name" placeholder="Neue Kategorie" required>
-    <button type="submit">Kategorie hinzufügen</button>
+<div class="page-head">
+  <h2>Menü</h2>
+  <form method="post" action="/admin/categories" class="add-category-form">
+    <input type="text" name="name" placeholder="Neue Kategorie" required aria-label="Name der neuen Kategorie">
+    <button type="submit" class="ghost">Anlegen</button>
   </form>
-</section>
+</div>
+
+{% if categories|length > 1 %}
+<nav class="cat-jump" aria-label="Kategorien">
+  {% for category in categories %}<a href="#cat-{{ category.id }}">{{ category.name }}<span>{{ category.items|length }}</span></a>{% endfor %}
+</nav>
+{% endif %}
 
 {% for category in categories %}
-<section class="category">
+<section class="category" id="cat-{{ category.id }}">
   <div class="category-header">
-    <h2>{{ category.name }}{% if category.is_promo %} <span class="tag">Aktion im Hero</span>{% endif %}</h2>
-    <form method="post" action="/admin/categories/{{ category.id }}/promo">
-      <button type="submit">{{ "Nicht mehr im Hero zeigen" if category.is_promo else "Im Hero zeigen (Aktion)" }}</button>
-    </form>
-    <form method="post" action="/admin/categories/{{ category.id }}/delete"
-          onsubmit="return confirm('Kategorie und alle Artikel darin löschen?')">
-      <button type="submit" class="danger">Kategorie löschen</button>
-    </form>
+    <h2>{{ category.name }}{% if category.is_promo %} <span class="tag">· Aktion im Hero</span>{% endif %}</h2>
+    <a class="add-item" href="/admin/items/new?category_id={{ category.id }}" style="margin:0">+ Artikel</a>
+    <details class="more">
+      <summary aria-label="Mehr für {{ category.name }}">⋯</summary>
+      <div class="more-menu">
+        <form method="post" action="/admin/categories/{{ category.id }}/promo">
+          <button type="submit">{{ "Nicht mehr im Hero zeigen" if category.is_promo else "Im Hero zeigen (Aktion)" }}</button>
+        </form>
+        <form method="post" action="/admin/categories/{{ category.id }}/delete"
+              data-confirm="Kategorie „{{ category.name }}“ und alle {{ category.items|length }} Artikel darin löschen?">
+          <button type="submit" class="danger">Kategorie löschen</button>
+        </form>
+      </div>
+    </details>
   </div>
   <div class="items">
     {% for item in category.items %}
     <div class="item-card {{ 'sold-out' if not item.is_available else '' }}">
       {% if item.image_filename %}
-      <img class="item-thumb" src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}">
+      <img class="item-thumb" src="/static/uploads/{{ item.image_filename }}" alt="" loading="lazy">
       {% endif %}
       <div class="item-info">
         <strong>{{ item.name }}</strong>
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
-        <p>{{ item.description }}</p>
+        {% if item.description %}<p>{{ item.description }}</p>{% endif %}
       </div>
       <div class="item-actions">
         {% include "admin/_sold_out_button.html" %}
@@ -39,10 +53,9 @@
     {% else %}
     <p class="empty">Noch keine Artikel in dieser Kategorie.</p>
     {% endfor %}
-    <a class="add-item" href="/admin/items/new?category_id={{ category.id }}">+ Artikel hinzufügen</a>
   </div>
 </section>
 {% else %}
-<p class="empty">Noch keine Kategorien angelegt.</p>
+<p class="empty">Noch keine Kategorien. Oben eine anlegen, dann Artikel hinzufügen.</p>
 {% endfor %}
 {% endblock %}

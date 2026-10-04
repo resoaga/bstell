@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Einstellungen</h2>
+<div class="page-head"><h2>Einstellungen</h2></div>
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
@@ -12,12 +12,16 @@
     <label>Unterzeile
       <input type="text" name="hero_subheadline" value="{{ settings.hero_subheadline }}" placeholder="z.B. Jetzt online bestellen – fertig in Minuten">
     </label>
-    <label>Hero-Bild
-      {% if settings.hero_image_filename %}
-      <img class="logo-preview" src="/static/uploads/{{ settings.hero_image_filename }}" alt="Aktuelles Hero-Bild">
-      {% endif %}
-      <input type="file" name="hero_image" accept="image/*">
-    </label>
+    <div>
+      <label for="hero-file">Hero-Bild</label>
+      <div class="image-field" style="margin-top:3px">
+        {% if settings.hero_image_filename %}<img class="logo-preview" src="/static/uploads/{{ settings.hero_image_filename }}" alt="Aktuelles Hero-Bild">{% endif %}
+        <div class="file-col">
+          <input id="hero-file" type="file" name="hero_image" accept="image/*">
+          {% if settings.hero_image_filename %}<button type="submit" class="danger small" formaction="/admin/settings/hero-image/delete" formnovalidate data-confirm="Hero-Bild entfernen?" data-confirm-label="Entfernen">Hero-Bild entfernen</button>{% endif %}
+        </div>
+      </div>
+    </div>
     <label class="checkbox-label">
       <input type="checkbox" name="promo_banner_enabled" {{ 'checked' if settings.promo_banner_enabled else '' }}>
       Aktions-Banner anzeigen

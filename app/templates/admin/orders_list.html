@@ -1,11 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Bestellungen – Admin{% endblock %}
 {% block content %}
-<div class="ord-top">
+<div class="page-head">
   <h2>Bestellungen</h2>
+  <div class="view-tabs"><a class="active" href="/admin/orders">Live</a><a href="/admin/orders/history">Verlauf</a></div>
   <button type="button" id="sound-btn" class="sound-btn" aria-pressed="false">🔕 Ton aus</button>
 </div>
 <p id="sound-hint" class="hint" hidden>Tippe einmal auf „Ton aus“, um den Signalton bei neuen Bestellungen zu aktivieren (der Browser erlaubt Ton erst nach einem Klick).</p>
+<div class="ord-bar" id="ord-filters">
+  <div class="chips" data-filter="status">
+    <button type="button" class="fchip is-on" data-v="">Alle</button>
+    <button type="button" class="fchip" data-v="received">Neu</button>
+    <button type="button" class="fchip" data-v="preparing">In Zubereitung</button>
+    <button type="button" class="fchip" data-v="ready">Fertig</button>
+  </div>
+  <div class="chips" data-filter="kind">
+    <button type="button" class="fchip is-on" data-v="">Beides</button>
+    <button type="button" class="fchip" data-v="pickup">Abholung</button>
+    <button type="button" class="fchip" data-v="delivery">Lieferung</button>
+  </div>
+</div>
 {% include "admin/_orders_feed.html" %}
 
 <script>
@@ -50,7 +64,31 @@
   // Browsers only unlock audio after a gesture: any tap on the page does it
   document.addEventListener('click', function () { if (on) { audio(); render(); } }, { once: false });
 
+  var filters = JSON.parse(sessionStorage.getItem('ordersFilter') || '{"status":"","kind":""}');
+  function applyFilters() {
+    document.querySelectorAll('#ord-filters .chips').forEach(function (g) {
+      g.querySelectorAll('.fchip').forEach(function (b) { b.classList.toggle('is-on', b.dataset.v === filters[g.dataset.filter]); });
+    });
+    var shown = 0, open = 0;
+    document.querySelectorAll('#orders-feed .ord').forEach(function (c) {
+      var isOpen = ['received', 'preparing', 'ready'].indexOf(c.dataset.status) > -1;
+      // Filters narrow the open orders; finished ones follow the "Abholung/Lieferung" choice only
+      var ok = (!filters.kind || c.dataset.kind === filters.kind) && (!isOpen || !filters.status || c.dataset.status === filters.status);
+      if (!isOpen && filters.status) ok = false;
+      c.hidden = !ok;
+      if (isOpen) { open++; if (ok) shown++; }
+    });
+    var empty = document.getElementById('ord-filter-empty');
+    if (empty) empty.hidden = !(open && !shown);
+  }
+  document.getElementById('ord-filters').addEventListener('click', function (e) {
+    var b = e.target.closest('.fchip'); if (!b) return;
+    filters[b.parentNode.dataset.filter] = b.dataset.v;
+    sessionStorage.setItem('ordersFilter', JSON.stringify(filters));
+    applyFilters();
+  });
   function update() {
+    applyFilters();
     var feed = document.getElementById('orders-feed');
     if (!feed) return;
     var max = parseInt(feed.dataset.maxId, 10) || 0;

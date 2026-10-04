@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Einstellungen</h2>
+<div class="page-head"><h2>Einstellungen</h2></div>
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
@@ -22,7 +22,7 @@
     </li>
     {% endfor %}
   </ul>
-  <form method="post" action="/admin/settings/delivery-zips/clear" class="inline" onsubmit="return confirm('Alle PLZ löschen? Danach wird überall hin geliefert.')">
+  <form method="post" action="/admin/settings/delivery-zips/clear" class="inline" data-confirm="Alle PLZ löschen? Danach wird überall hin geliefert." data-confirm-label="Alle löschen">
     <button type="submit" class="danger small">Alle entfernen</button>
   </form>
   {% else %}

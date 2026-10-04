@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Sicherheit – Admin{% endblock %}
+{% block content %}
+<div class="page-head"><div class="page-head"><h2>Einstellungen</h2></div></div>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Link-Anfragen (Bestellverlauf per E-Mail)</h2>
+  <p class="hint">
+    Jede Anfrage von „Bestellungen von einem anderen Gerät“. Rot = gesperrt (5+ Anfragen pro Stunde für dieselbe E-Mail
+    oder 10+ von derselben IP). Taucht dasselbe Muster mehrfach auf, ist es wahrscheinlich ein Angriff, sonst meist ein Versehen.
+  </p>
+  {% if entries %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Zeit</th><th>E-Mail</th><th>IP</th><th>Ergebnis</th><th>Link benutzt</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr class="{{ 'row-alert' if e.status in ('blocked', 'rate_limited') else '' }}">
+        <td class="nowrap">{{ e.created_at|localtime("%d.%m.%Y %H:%M:%S") }}</td>
+        <td>{{ e.email }}</td>
+        <td>{{ e.ip }}</td>
+        <td>{{ labels.get(e.status, e.status) }}</td>
+        <td class="nowrap">{{ e.used_at|localtime("%d.%m. %H:%M") if e.used_at else "–" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">Noch keine Anfragen.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<p><a href="/admin/option-groups" class="back-link">← Alle Optionsgruppen</a></p>
+<a href="/admin/option-groups" class="back-link">← Alle Optionsgruppen</a>
 <h2>{{ group.name }}</h2>
 
 <form method="post" action="/admin/option-groups/{{ group.id }}/rename" class="inline-form">
@@ -42,7 +42,7 @@
 
 <h3>Gruppe löschen</h3>
 <form method="post" action="/admin/option-groups/{{ group.id }}/delete"
-      onsubmit="return confirm('Gruppe samt Optionen löschen? Sie verschwindet bei allen {{ group.links|length }} Artikeln.');">
+      data-confirm="Gruppe samt Optionen löschen? Sie verschwindet bei allen {{ group.links|length }} Artikeln.">
   <button type="submit" class="danger">Gruppe löschen</button>
 </form>
 {% endblock %}

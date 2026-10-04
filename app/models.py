@@ -258,6 +258,7 @@ class RestaurantSettings(Base):
     vat_number = Column(String, default="")  # UID / MWST-Nr., printed on the receipt when set
     attach_receipt_pdf = Column(Boolean, default=False, nullable=False)
     order_limit_per_hour = Column(Integer, default=5)  # abuse protection: max orders per customer and hour
+    orders_done_limit = Column(Integer, default=3)  # finished orders shown on the live board (rest: history page)
     cancel_reasons = Column(Text, default="")  # one preset per line; empty = built-in defaults  # free text under the opening hours (e.g. special days)
     phone = Column(String, default="")
     email = Column(String, default="")
@@ -396,3 +397,17 @@ class OpeningHour(Base):
     weekday = Column(Integer, nullable=False)
     open_time = Column(String, nullable=False, default="11:00")
     close_time = Column(String, nullable=False, default="22:00")
+
+
+class AuditLog(Base):
+    """Who changed what in the admin and when (traceability). Written by the
+    admin middleware for every successful change; never edited or deleted."""
+
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    actor = Column(String, default="")
+    ip = Column(String, default="")
+    action = Column(String, nullable=False)
+    detail = Column(String, default="")

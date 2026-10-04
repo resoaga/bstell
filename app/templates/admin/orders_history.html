@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Verlauf – Admin{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Bestellungen</h2>
+  <div class="view-tabs"><a href="/admin/orders">Live</a><a class="active" href="/admin/orders/history">Verlauf</a></div>
+</div>
+
+<form method="get" action="/admin/orders/history" class="filter-bar">
+  <input type="search" name="q" value="{{ f.q }}" placeholder="Nr., Name oder Telefon" aria-label="Suche">
+  <select name="period" aria-label="Zeitraum">
+    {% for key, label in periods.items() %}<option value="{{ key }}" {{ "selected" if f.period == key }}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="status" aria-label="Status">
+    <option value="">Alle Status</option>
+    {% for st, label in status_labels.items() if st.value != "awaiting_payment" %}<option value="{{ st.value }}" {{ "selected" if f.status == st.value }}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="kind" aria-label="Art">
+    <option value="">Abholung + Lieferung</option>
+    <option value="pickup" {{ "selected" if f.kind == "pickup" }}>Abholung</option>
+    <option value="delivery" {{ "selected" if f.kind == "delivery" }}>Lieferung</option>
+  </select>
+  <select name="pay" aria-label="Zahlung">
+    <option value="">Alle Zahlungen</option>
+    <option value="cash" {{ "selected" if f.pay == "cash" }}>Bar</option>
+    <option value="card" {{ "selected" if f.pay == "card" }}>Karte / Twint</option>
+    <option value="online" {{ "selected" if f.pay == "online" }}>Online</option>
+  </select>
+  <button type="submit">Filtern</button>
+</form>
+
+<div class="ord-grid">
+  {% for order in orders %}
+  {% include "admin/_order_card.html" %}
+  {% else %}
+  <p class="empty">Keine Bestellungen für diese Auswahl.</p>
+  {% endfor %}
+</div>
+
+{% if page > 1 or has_more %}
+<div class="pager">
+  {% set qs = "q=" ~ f.q|urlencode ~ "&period=" ~ f.period ~ "&status=" ~ f.status ~ "&kind=" ~ f.kind ~ "&pay=" ~ f.pay %}
+  {% if page > 1 %}<a class="btn btn-ghost" href="/admin/orders/history?{{ qs }}&page={{ page - 1 }}">← Neuere</a>{% endif %}
+  {% if has_more %}<a class="btn btn-ghost" href="/admin/orders/history?{{ qs }}&page={{ page + 1 }}">Ältere →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -15,11 +15,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from .. import audit
 from .. import customer as cust
 from .. import orderflow
 from ..auth import require_admin, verify_same_origin
 from .. import timeutil
-from ..assets import css_version
+from ..assets import admin_version, css_version
 from ..database import get_db
 from ..models import (
     ORDER_STATUS_LABELS,
@@ -32,6 +33,7 @@ from ..models import (
     OpeningHour,
     Option,
     OptionGroup,
+    AuditLog,
     AvailabilityRule,
     LoginLink,
     Order,
@@ -143,6 +145,7 @@ async def save_uploaded_image(upload: UploadFile, prefix: str, max_side: Optiona
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["css_version"] = css_version
+templates.env.globals["admin_version"] = admin_version
 timeutil.register(templates)
 mutating = [Depends(verify_same_origin)]
 
@@ -164,16 +167,18 @@ ORDER_TEMPLATE_EXTRAS = {
 
 
 SETTINGS_TABS = [
-    ("general", "Stammdaten"),
-    ("website", "Webseite"),
-    ("ordering", "Bestellannahme"),
-    ("hours", "Öffnungszeiten"),
-    ("times", "Bestellzeiten"),
-    ("delivery-zone", "Liefergebiet"),
-    ("payment", "Zahlungsdienstleister"),
-    ("email", "E-Mail"),
-    ("legal", "Rechtliches"),
-    ("customers", "Kunden"),
+    ("general", "Stammdaten", "Betrieb"),
+    ("hours", "Öffnungszeiten", "Betrieb"),
+    ("times", "Bestellzeiten", "Betrieb"),
+    ("delivery-zone", "Liefergebiet", "Betrieb"),
+    ("ordering", "Bestellannahme", "Bestellung"),
+    ("payment", "Zahlung", "Bestellung"),
+    ("email", "E-Mail", "Bestellung"),
+    ("website", "Webseite", "Inhalt"),
+    ("legal", "Rechtliches", "Inhalt"),
+    ("customers", "Kunden", "Kunden"),
+    ("security", "Sicherheit", "System"),
+    ("audit", "Protokoll", "System"),
 ]
 
 
@@ -194,7 +199,8 @@ def menu_list(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/categories", dependencies=mutating)
-def create_category(name: str = Form(...), db: Session = Depends(get_db)):
+def create_category(request: Request, name: str = Form(...), db: Session = Depends(get_db)):
+    audit.note(request, name)
     db.add(Category(name=name))
     db.commit()
     return RedirectResponse(url="/admin/menu", status_code=303)
@@ -211,10 +217,11 @@ def toggle_category_promo(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/categories/{category_id}/delete", dependencies=mutating)
-def delete_category(category_id: int, db: Session = Depends(get_db)):
+def delete_category(category_id: int, request: Request, db: Session = Depends(get_db)):
     category = db.get(Category, category_id)
     if category is None:
         raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+    audit.note(request, f"{category.name} ({len(category.items)} Artikel)")
     db.delete(category)
     db.commit()
     return RedirectResponse(url="/admin/menu", status_code=303)
@@ -236,6 +243,7 @@ def new_item_form(request: Request, category_id: Optional[int] = None, db: Sessi
 
 @router.post("/items/new", dependencies=mutating)
 async def create_item(
+    request: Request,
     name: str = Form(...),
     description: str = Form(""),
     price: float = Form(...),
@@ -243,6 +251,7 @@ async def create_item(
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
+    audit.note(request, f"{name}, CHF {price:.2f}")
     item = MenuItem(name=name, description=description, price=price, category_id=category_id)
     if image is not None and image.filename:
         item.image_filename = await save_uploaded_image(image, "item", max_side=720)
@@ -273,6 +282,7 @@ def edit_item_form(item_id: int, request: Request, db: Session = Depends(get_db)
 @router.post("/items/{item_id}/edit", dependencies=mutating)
 async def update_item(
     item_id: int,
+    request: Request,
     name: str = Form(...),
     description: str = Form(""),
     price: float = Form(...),
@@ -283,21 +293,69 @@ async def update_item(
     item = db.get(MenuItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    changes = []
+    if item.name != name:
+        changes.append(f"Name {item.name} -> {name}")
+    if abs(item.price - price) > 0.001:
+        changes.append(f"Preis {item.price:.2f} -> {price:.2f}")
+    audit.note(request, f"{name}: " + ", ".join(changes) if changes else name)
     item.name = name
     item.description = description
     item.price = price
     item.category_id = category_id
     if image is not None and image.filename:
+        old = item.image_filename
         item.image_filename = await save_uploaded_image(image, "item", max_side=720)
+        _remove_upload(old)
     db.commit()
     return RedirectResponse(url=f"/admin/items/{item_id}/edit", status_code=303)
 
 
-@router.post("/items/{item_id}/delete", dependencies=mutating)
-def delete_item(item_id: int, db: Session = Depends(get_db)):
+def _remove_upload(filename: str) -> None:
+    """Deletes an uploaded file (basename only, so nothing outside the upload folder is touched)."""
+    if filename:
+        try:
+            os.remove(os.path.join(UPLOAD_DIR, os.path.basename(filename)))
+        except OSError:
+            pass
+
+
+@router.post("/items/{item_id}/image/delete", dependencies=mutating)
+def delete_item_image(item_id: int, request: Request, db: Session = Depends(get_db)):
     item = db.get(MenuItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    audit.note(request, item.name)
+    _remove_upload(item.image_filename)
+    item.image_filename = ""
+    db.commit()
+    return RedirectResponse(url=f"/admin/items/{item_id}/edit", status_code=303)
+
+
+@router.post("/settings/logo/delete", dependencies=mutating)
+def delete_logo(db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    _remove_upload(settings.logo_filename)
+    settings.logo_filename = ""
+    db.commit()
+    return RedirectResponse(url="/admin/settings/general", status_code=303)
+
+
+@router.post("/settings/hero-image/delete", dependencies=mutating)
+def delete_hero_image(db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    _remove_upload(settings.hero_image_filename)
+    settings.hero_image_filename = ""
+    db.commit()
+    return RedirectResponse(url="/admin/settings/website", status_code=303)
+
+
+@router.post("/items/{item_id}/delete", dependencies=mutating)
+def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
+    item = db.get(MenuItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    audit.note(request, item.name)
     db.delete(item)
     db.commit()
     return RedirectResponse(url="/admin/menu", status_code=303)
@@ -308,6 +366,7 @@ def toggle_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     item = db.get(MenuItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    audit.note(request, item.name)
     if item.temp_sold_out:
         item.sold_out_until = None  # "Wieder verfügbar" also ends a temporary sold-out
     else:
@@ -323,6 +382,7 @@ def toggle_new(item_id: int, request: Request, db: Session = Depends(get_db)):
     item = db.get(MenuItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Artikel nicht gefunden")
+    audit.note(request, item.name)
     item.is_new = not item.is_new
     db.commit()
     return templates.TemplateResponse(
@@ -545,11 +605,40 @@ LINK_STATUS_LABELS = {
 
 
 @router.get("/link-requests")
-def link_requests(request: Request, db: Session = Depends(get_db)):
+def link_requests():
+    return RedirectResponse(url="/admin/settings/security", status_code=303)
+
+
+@router.get("/settings/security")
+def settings_security(request: Request, db: Session = Depends(get_db)):
     entries = db.query(LoginLink).order_by(LoginLink.created_at.desc()).limit(200).all()
     return templates.TemplateResponse(
-        "admin/link_requests.html",
-        {"request": request, "entries": entries, "labels": LINK_STATUS_LABELS},
+        "admin/settings_security.html",
+        {"request": request, "entries": entries, "labels": LINK_STATUS_LABELS, **settings_context("security", db)},
+    )
+
+
+@router.get("/settings/audit")
+def settings_audit(request: Request, q: str = "", page: int = 1, db: Session = Depends(get_db)):
+    per_page = 50
+    query = db.query(AuditLog)
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(
+            AuditLog.action.like(like) | AuditLog.detail.like(like) | AuditLog.actor.like(like) | AuditLog.ip.like(like)
+        )
+    page = max(1, page)
+    entries = query.order_by(AuditLog.id.desc()).offset((page - 1) * per_page).limit(per_page + 1).all()
+    return templates.TemplateResponse(
+        "admin/settings_audit.html",
+        {
+            "request": request,
+            "entries": entries[:per_page],
+            "has_more": len(entries) > per_page,
+            "page": page,
+            "q": q,
+            **settings_context("audit", db),
+        },
     )
 
 
@@ -563,6 +652,7 @@ def _cancel_reasons(db: Session) -> list:
 
 def _orders_context(db: Session) -> dict:
     now = datetime.utcnow()
+    done_limit = max(0, get_settings(db).orders_done_limit if get_settings(db).orders_done_limit is not None else 3)
     open_orders = (
         db.query(Order).filter(Order.status.in_(OPEN_STATES)).order_by(Order.created_at.asc()).all()
     )
@@ -570,7 +660,7 @@ def _orders_context(db: Session) -> dict:
         db.query(Order)
         .filter(Order.status.in_((OrderStatus.completed, OrderStatus.cancelled)), Order.created_at >= now - timedelta(hours=24))
         .order_by(Order.created_at.desc())
-        .limit(30)
+        .limit(done_limit)
         .all()
     )
     max_id = db.query(func.max(Order.id)).scalar() or 0
@@ -583,6 +673,7 @@ def _orders_context(db: Session) -> dict:
         "done_orders": done_orders,
         "max_id": max_id,
         "signature": signature,
+        "done_limit": done_limit,
         "new_count": sum(1 for o in open_orders if o.status == OrderStatus.received),
         "payment_labels": PAYMENT_LABELS,
         "cancel_reasons": _cancel_reasons(db),
@@ -597,6 +688,58 @@ def orders_list(request: Request, db: Session = Depends(get_db)):
     ctx = _orders_context(db)
     ctx["estimate"] = {"pickup": settings.estimated_pickup_minutes, "delivery": settings.estimated_delivery_minutes}
     return templates.TemplateResponse("admin/orders_list.html", {"request": request, **ctx})
+
+
+PERIODS = {"today": "Heute", "7": "7 Tage", "30": "30 Tage", "all": "Alle"}
+
+
+@router.get("/orders/history")
+def orders_history(
+    request: Request,
+    q: str = "",
+    status: str = "",
+    kind: str = "",
+    pay: str = "",
+    period: str = "7",
+    page: int = 1,
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    per_page = 25
+    query = db.query(Order).filter(Order.status != OrderStatus.awaiting_payment)
+    if period == "today":
+        query = query.filter(Order.created_at >= timeutil.local_midnight_utc())
+    elif period in ("7", "30"):
+        query = query.filter(Order.created_at >= datetime.utcnow() - timedelta(days=int(period)))
+    if status in {s_.value for s_ in OrderStatus}:
+        query = query.filter(Order.status == OrderStatus(status))
+    if kind in ("pickup", "delivery"):
+        query = query.filter(Order.order_type == kind)
+    if pay in PAYMENT_LABELS:
+        query = query.filter(Order.payment_method == pay)
+    term = q.strip().lstrip("#")
+    if term:
+        like = f"%{term}%"
+        cond = Order.customer_name.like(like) | Order.phone.like(like)
+        if term.isdigit():
+            cond = cond | (Order.id == int(term))
+        query = query.filter(cond)
+    page = max(1, page)
+    orders = query.order_by(Order.id.desc()).offset((page - 1) * per_page).limit(per_page + 1).all()
+    return templates.TemplateResponse(
+        "admin/orders_history.html",
+        {
+            "request": request,
+            "orders": orders[:per_page],
+            "has_more": len(orders) > per_page,
+            "page": page,
+            "f": {"q": q, "status": status, "kind": kind, "pay": pay, "period": period},
+            "periods": PERIODS,
+            "estimate": {"pickup": settings.estimated_pickup_minutes, "delivery": settings.estimated_delivery_minutes},
+            "cancel_reasons": _cancel_reasons(db),
+            **ORDER_TEMPLATE_EXTRAS,
+        },
+    )
 
 
 @router.get("/orders/feed")
@@ -625,6 +768,7 @@ def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)
     if next_status is None:
         raise HTTPException(status_code=400, detail="Kein weiterer Status möglich")
     order.status = next_status
+    audit.note(request, f"#{order.id} -> {ORDER_STATUS_LABELS[next_status]}")
     db.commit()
     response = templates.TemplateResponse(
         "admin/_order_row_actions.html",
@@ -653,6 +797,7 @@ def cancel_order(
         )
     order.status = OrderStatus.cancelled
     order.cancel_reason = (custom.strip() or preset.strip())[:200]
+    audit.note(request, f"#{order.id}: {order.cancel_reason or 'ohne Grund'}")
     db.commit()
     background.add_task(orderflow.send_cancellation, order.id, cust.public_base_url(request))
     response = templates.TemplateResponse(
@@ -696,7 +841,9 @@ async def update_general_settings(
     settings.email = email
     settings.vat_number = vat_number.strip()[:40]
     if logo is not None and logo.filename:
+        old = settings.logo_filename
         settings.logo_filename = await save_uploaded_image(logo, "logo")
+        _remove_upload(old)
     db.commit()
     return RedirectResponse(url="/admin/settings/general", status_code=303)
 
@@ -743,7 +890,9 @@ async def update_website_settings(
     settings.accent_color = accent_color or "#c8102e"
     settings.footer_credit = footer_credit.strip()[:140]
     if hero_image is not None and hero_image.filename:
+        old = settings.hero_image_filename
         settings.hero_image_filename = await save_uploaded_image(hero_image, "hero", max_side=1600)
+        _remove_upload(old)
     db.commit()
     return RedirectResponse(url="/admin/settings/website", status_code=303)
 
@@ -852,6 +1001,7 @@ def update_ordering_settings(
     preorder_minutes: int = Form(60),
     cancel_reasons: str = Form(""),
     order_limit_per_hour: int = Form(5),
+    orders_done_limit: int = Form(3),
     service_fee_enabled: bool = Form(False),
     service_fee_percent: float = Form(0.0),
     service_fee_fixed: float = Form(0.0),
@@ -861,6 +1011,7 @@ def update_ordering_settings(
     settings = get_settings(db)
     settings.preorder_minutes = max(0, min(preorder_minutes, 240))
     settings.order_limit_per_hour = max(1, min(order_limit_per_hour, 50))
+    settings.orders_done_limit = max(0, min(orders_done_limit, 30))
     cleaned = [l.strip()[:120] for l in cancel_reasons.splitlines() if l.strip()]
     settings.cancel_reasons = "" if cleaned == DEFAULT_CANCEL_REASONS else "\n".join(cleaned)[:2000]
     settings.service_fee_enabled = service_fee_enabled

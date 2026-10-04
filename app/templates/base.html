@@ -3,35 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Bestellsystem – Admin{% endblock %}</title>
+  <meta name="theme-color" content="#15171c">
+  <title>{% block title %}Admin{% endblock %}</title>
   <script src="/static/htmx.min.js"></script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a73c7'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/static/style.css?v={{ css_version() }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffc21a'/%3E%3Ctext x='32' y='46' font-size='38' text-anchor='middle' fill='%2315171c' font-family='Arial' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/admin.css?v={{ admin_version() }}">
 </head>
 <body>
+  {% set path = request.url.path %}
   <header class="topbar">
-    <h1>Bestellsystem – Admin</h1>
-    <button class="burger-btn" id="burgerBtn" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    <a class="brand" href="/admin/orders"><span class="brand-mark">A</span>Admin</a>
     <nav class="topbar-nav" id="topbarNav">
-      <a class="topbar-link" href="/admin/menu">Menü</a>
-      <a class="topbar-link" href="/admin/option-groups">Optionen</a>
-      <a class="topbar-link" href="/admin/orders">Bestellungen <span hx-get="/admin/orders/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
-      <a class="topbar-link" href="/admin/link-requests">Link-Anfragen</a>
-      <a class="topbar-link" href="/admin/settings">Einstellungen</a>
+      <a class="topbar-link {{ 'active' if path.startswith('/admin/orders') }}" href="/admin/orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l2 5H4z"/><path d="M5 8v12h14V8"/><path d="M10 13h4"/></svg>
+        Bestellungen<span hx-get="/admin/orders/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
+      <a class="topbar-link {{ 'active' if path.startswith('/admin/menu') or path.startswith('/admin/items') }}" href="/admin/menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Menü</a>
+      <a class="topbar-link {{ 'active' if path.startswith('/admin/option-groups') }}" href="/admin/option-groups">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+        Optionen</a>
+      <a class="topbar-link {{ 'active' if path.startswith('/admin/settings') }}" href="/admin/settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        Einstellungen</a>
     </nav>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
-  <script>
-    (function () {
-      var btn = document.getElementById('burgerBtn');
-      var nav = document.getElementById('topbarNav');
-      btn.addEventListener('click', function () {
-        var isOpen = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      });
-    })();
-  </script>
+  <script src="/static/admin.js?v={{ admin_version() }}"></script>
 </body>
 </html>

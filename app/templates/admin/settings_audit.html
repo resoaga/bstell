@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Protokoll – Admin{% endblock %}
+{% block content %}
+<div class="page-head"><div class="page-head"><h2>Einstellungen</h2></div></div>
+{% include "admin/_settings_nav.html" %}
+
+<section class="category">
+  <h2>Protokoll</h2>
+  <p class="hint">Jede Änderung im Admin mit Zeit, Benutzer und IP-Adresse: Menü, Preise, Bestellstatus, Stornos, Einstellungen, auch fehlgeschlagene Anmeldungen. Einträge können nicht bearbeitet oder gelöscht werden.</p>
+  <form method="get" action="/admin/settings/audit" class="inline-form">
+    <input type="search" name="q" value="{{ q }}" placeholder="Suchen (Aktion, Artikel, Benutzer, IP)" aria-label="Suche">
+    <button type="submit" class="ghost">Suchen</button>
+  </form>
+  {% if entries %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Zeit</th><th>Aktion</th><th>Details</th><th>Benutzer</th><th>IP</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr class="{{ 'row-alert' if e.action == 'Fehlgeschlagene Anmeldung' else '' }}">
+        <td class="nowrap">{{ e.created_at|localtime("%d.%m.%Y %H:%M:%S") }}</td>
+        <td>{{ e.action }}</td>
+        <td>{{ e.detail }}</td>
+        <td>{{ e.actor }}</td>
+        <td class="nowrap">{{ e.ip }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">Keine Einträge.</p>
+  {% endif %}
+  {% if page > 1 or has_more %}
+  <div class="pager">
+    {% if page > 1 %}<a class="btn btn-ghost" href="/admin/settings/audit?q={{ q|urlencode }}&page={{ page - 1 }}">← Neuere</a>{% endif %}
+    {% if has_more %}<a class="btn btn-ghost" href="/admin/settings/audit?q={{ q|urlencode }}&page={{ page + 1 }}">Ältere →</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Einstellungen</h2>
+<div class="page-head"><h2>Einstellungen</h2></div>
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
@@ -27,12 +27,16 @@
     <label>MWST-Nr. / UID (optional, erscheint auf dem Beleg)
       <input type="text" name="vat_number" value="{{ settings.vat_number or '' }}" placeholder="z.B. CHE-123.456.789 MWST" maxlength="40">
     </label>
-    <label>Logo
-      {% if settings.logo_filename %}
-      <img class="logo-preview" src="/static/uploads/{{ settings.logo_filename }}" alt="Aktuelles Logo">
-      {% endif %}
-      <input type="file" name="logo" accept="image/*">
-    </label>
+    <div>
+      <label for="logo-file">Logo</label>
+      <div class="image-field" style="margin-top:3px">
+        {% if settings.logo_filename %}<img class="logo-preview" src="/static/uploads/{{ settings.logo_filename }}" alt="Aktuelles Logo">{% endif %}
+        <div class="file-col">
+          <input id="logo-file" type="file" name="logo" accept="image/*">
+          {% if settings.logo_filename %}<button type="submit" class="danger small" formaction="/admin/settings/logo/delete" formnovalidate data-confirm="Logo entfernen?" data-confirm-label="Entfernen">Logo entfernen</button>{% endif %}
+        </div>
+      </div>
+    </div>
     <button type="submit">Speichern</button>
   </form>
 </section>
