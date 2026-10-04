@@ -93,7 +93,7 @@
       </div>
       {% endif %}
       <div class="menu-card-body">
-        <strong>{{ item.name }}{% if item.is_new and not item.image_filename %} <span class="badge-new inline">Neu</span>{% endif %}</strong>
+        <strong>{{ item.name }}{% if item.is_new and not item.image_filename %} <span class="badge-new inline">Neu</span>{% endif %}{% if item.is_vegetarian %} <span class="veg-badge" title="Vegetarisch"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M20 4C9 4 4 9 4 16c0 1.3.2 2.5.6 3.6C6 15 10 11.5 15 10c-4.1 2.3-7 6-8.2 10.4.9.4 2 .6 3.2.6 7 0 11-5 10-17z"/></svg>Vegetarisch</span>{% endif %}</strong>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
       </div>

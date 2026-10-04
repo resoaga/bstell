@@ -44,7 +44,7 @@ def _legal_links(db, base_url):
     return [(page.title, f"{base_url}/rechtliches/{page.slug}") for page in get_all_content_pages(db) if page.body.strip()]
 
 
-def send_confirmation(order_id: int, base_url: str) -> None:
+def send_confirmation(order_id: int, base_url: str, force: bool = False) -> None:
     """Background task: confirmation e-mail (HTML + plain text, optional PDF receipt)."""
     from .database import SessionLocal
     from .receipt import build_receipt
@@ -55,7 +55,7 @@ def send_confirmation(order_id: int, base_url: str) -> None:
     try:
         order = db.get(Order, order_id)
         settings = get_settings(db)
-        if order is None or not order.email or not settings.send_order_confirmation or not mail_configured(settings):
+        if order is None or not order.email or (not settings.send_order_confirmation and not force) or not mail_configured(settings):
             return
         shop = settings.name or "unser Restaurant"
         accent = settings.accent_color

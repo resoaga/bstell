@@ -1,54 +1,74 @@
 {% extends "base.html" %}
+{% block title %}Liefergebiet – Admin{% endblock %}
 {% block content %}
 <div class="page-head"><h2>Einstellungen</h2></div>
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
-  <h2>Liefergebiet (Postleitzahlen)</h2>
+  <h2>Liefergebiete (Postleitzahlen)</h2>
   <p class="hint">
-    Hier stehen alle PLZ, in die geliefert wird. Die Webseite prüft an der Kasse sofort bei der Eingabe und noch einmal beim Absenden.
-    <strong>Ist die Liste leer, wird überall hin geliefert.</strong> Abholung ist davon nicht betroffen.
+    Jede Zone hat eigene Lieferkosten und einen eigenen Mindestbestellwert. Geliefert wird nur in die PLZ, die in einer Zone stehen.
+    <strong>Ohne Zone wird überall zu den Standardwerten geliefert</strong> (Einstellungen → Bestellannahme). Abholung ist nie betroffen.
+    Die Kasse prüft die PLZ sofort bei der Eingabe und noch einmal beim Absenden.
   </p>
   {% if error %}<p class="notice">{{ error }}</p>{% endif %}
-  {% if zips %}
-  <ul class="zip-chips">
-    {% for z in zips %}
-    <li>
-      <span>{{ z }}</span>
-      <form method="post" action="/admin/settings/delivery-zips/remove" class="inline">
-        <input type="hidden" name="zip" value="{{ z }}">
-        <button type="submit" class="zip-x" aria-label="PLZ {{ z }} entfernen" title="Entfernen">×</button>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-  <form method="post" action="/admin/settings/delivery-zips/clear" class="inline" data-confirm="Alle PLZ löschen? Danach wird überall hin geliefert." data-confirm-label="Alle löschen">
-    <button type="submit" class="danger small">Alle entfernen</button>
-  </form>
-  {% else %}
-  <p class="empty">Noch keine PLZ eingetragen – es wird überall hin geliefert.</p>
-  {% endif %}
-  <form method="post" action="/admin/settings/delivery-zips/add" class="zip-add">
-    <label>PLZ hinzufügen (eine oder mehrere, durch Leerzeichen oder Komma getrennt)
-      <input type="text" name="zips" inputmode="numeric" placeholder="z.B. 4133 4132 4127" autocomplete="off" required>
-    </label>
-    <button type="submit">Hinzufügen</button>
-  </form>
 </section>
 
-<section class="category">
-  <h2>Liefergebiet nach Umkreis (noch nicht aktiv)</h2>
-  <p class="hint">
-    Wird aktuell nur gespeichert — die automatische Prüfung, ob eine Kundenadresse im Umkreis liegt, ist ein eigenes, größeres Thema und kommt später.
-  </p>
-  <form method="post" action="/admin/settings/delivery-zone">
-    <label>Zentrum (Adresse oder PLZ)
-      <input type="text" name="delivery_zone_center" value="{{ settings.delivery_zone_center }}" placeholder="z.B. 8000 Zürich">
+{% for zone in zones %}
+<section class="category zone">
+  <form method="post" action="/admin/settings/zones/{{ zone.id }}" class="zone-head">
+    <label class="grow">Zone
+      <input type="text" name="name" value="{{ zone.name }}" maxlength="40" required>
     </label>
-    <label>Radius (km)
-      <input type="number" step="0.5" min="0" name="delivery_zone_radius_km" value="{{ settings.delivery_zone_radius_km }}">
+    <label class="w-money">Lieferkosten (CHF)
+      <input type="number" step="0.05" min="0" name="delivery_fee" value="{{ '%.2f'|format(zone.delivery_fee or 0) }}">
+    </label>
+    <label class="w-money">Mindestbestellwert (CHF)
+      <input type="number" step="0.05" min="0" name="min_order" value="{{ '%.2f'|format(zone.min_order or 0) }}">
     </label>
     <button type="submit">Speichern</button>
+    <button type="submit" class="danger" formaction="/admin/settings/zones/{{ zone.id }}/delete" formnovalidate
+            data-confirm="Zone „{{ zone.name }}“ löschen? Ihre PLZ werden dann nicht mehr beliefert.">Zone löschen</button>
+  </form>
+  <div class="zone-zips">
+    {% if zone.zip_list %}
+    <ul class="zip-chips">
+      {% for z in zone.zip_list %}
+      <li><span>{{ z }}</span>
+        <form method="post" action="/admin/settings/zones/{{ zone.id }}/zips/remove" class="inline">
+          <input type="hidden" name="zip" value="{{ z }}">
+          <button type="submit" class="zip-x" aria-label="PLZ {{ z }} entfernen" title="Entfernen">×</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <span class="empty">Noch keine PLZ.</span>
+    {% endif %}
+    <form method="post" action="/admin/settings/zones/{{ zone.id }}/zips/add" class="zip-add">
+      <input type="text" name="zips" inputmode="numeric" placeholder="PLZ hinzufügen, z.B. 4133 4132" autocomplete="off" required aria-label="PLZ hinzufügen">
+      <button type="submit" class="ghost">Hinzufügen</button>
+    </form>
+  </div>
+</section>
+{% endfor %}
+
+<section class="category">
+  <h2>Neue Zone</h2>
+  <form method="post" action="/admin/settings/zones/new" class="zone-head">
+    <label class="grow">Name
+      <input type="text" name="name" placeholder="z.B. Nah oder Liestal" maxlength="40" required>
+    </label>
+    <label class="w-money">Lieferkosten (CHF)
+      <input type="number" step="0.05" min="0" name="delivery_fee" value="0">
+    </label>
+    <label class="w-money">Mindestbestellwert (CHF)
+      <input type="number" step="0.05" min="0" name="min_order" value="0">
+    </label>
+    <label class="grow">PLZ
+      <input type="text" name="zips" inputmode="numeric" placeholder="z.B. 4133 4132 4127" autocomplete="off">
+    </label>
+    <button type="submit">Zone anlegen</button>
   </form>
 </section>
 {% endblock %}

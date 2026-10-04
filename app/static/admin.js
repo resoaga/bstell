@@ -27,8 +27,10 @@
   document.body.addEventListener('htmx:afterRequest', function (e) {
     if (e.detail.successful) flash();
   });
-  document.body.addEventListener('htmx:responseError', function () {
-    window.toast('Das hat nicht geklappt. Bitte Seite neu laden und nochmal versuchen.', 'error');
+  document.body.addEventListener('htmx:responseError', function (e) {
+    var msg = 'Das hat nicht geklappt. Bitte Seite neu laden und nochmal versuchen.';
+    try { var d = JSON.parse(e.detail.xhr.responseText).detail; if (typeof d === 'string') msg = d; } catch (err) {}
+    window.toast(msg, 'error');
   });
   document.body.addEventListener('htmx:sendError', function () {
     window.toast('Keine Verbindung zum Server.', 'error');
@@ -44,14 +46,24 @@
   dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
   dlg.querySelector('[data-yes]').addEventListener('click', function () {
     var p = pending; pending = null; dlg.close();
-    if (p) { p.form.dataset.confirmed = '1'; p.form.requestSubmit(p.submitter || undefined); }
+    if (!p) return;
+    if (p.run) { p.run(); return; }
+    p.form.dataset.confirmed = '1'; p.form.requestSubmit(p.submitter || undefined);
   });
-  function ask(form, submitter, el) {
-    pending = { form: form, submitter: submitter };
+  function ask(form, submitter, el, run) {
+    pending = { form: form, submitter: submitter, run: run };
+    dlg.querySelector('[data-yes]').className = el.dataset.confirmStyle === 'plain' ? '' : 'danger';
     dlg.querySelector('p').textContent = el.dataset.confirm;
     dlg.querySelector('[data-yes]').textContent = el.dataset.confirmLabel || 'Löschen';
     dlg.showModal();
   }
+  // htmx buttons outside a form (e.g. resend receipt)
+  document.body.addEventListener('htmx:confirm', function (e) {
+    var el = e.detail.elt;
+    if (!el || !el.dataset || !el.dataset.confirm) return;
+    e.preventDefault();
+    ask(null, null, el, function () { e.detail.issueRequest(true); });
+  });
   document.addEventListener('submit', function (e) {
     var f = e.target;
     if (f.dataset.confirmed) { delete f.dataset.confirmed; return; }

@@ -11,7 +11,7 @@
     {% endif %}
   </div>
   {% if below_minimum %}
-  <p class="notice">Mindestbestellwert ist CHF {{ "%.2f"|format(settings.minimum_order_value) }}.</p>
+  <p class="notice">Mindestbestellwert ist CHF {{ "%.2f"|format(cart_min) }}.</p>
   {% endif %}
 </div>
 

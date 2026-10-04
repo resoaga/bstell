@@ -12,8 +12,10 @@
 {% set pay = contact.payment or payment_options[0][0] %}
 
 <form method="post" action="/kasse" class="checkout" id="checkout-form"
-      data-total="{{ total + service_fee }}" data-delivery-fee="{{ settings.delivery_fee or 0 }}"
-      data-zips="{{ zips|join(',') }}">
+      data-total="{{ total + service_fee }}" data-goods="{{ total }}"
+      data-default-fee="{{ settings.delivery_fee or 0 }}" data-default-min="{{ settings.minimum_order_value or 0 }}"
+      data-pickup-min="{{ settings.minimum_order_value or 0 }}" data-has-zones="{{ 1 if has_zones else 0 }}"
+      data-zones="{{ zones_json|e }}">
 
   <input type="hidden" name="t0" value="{{ t0 }}">
   <input type="text" name="hp_trap" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -32,7 +34,7 @@
     </ul>
   </details>
   {% if service_fee %}<p class="cart-sub">{{ service_fee_text }} <span>CHF {{ "%.2f"|format(service_fee) }}</span></p>{% endif %}
-  {% if settings.delivery_enabled and settings.delivery_fee %}<p class="cart-sub" id="co-delivery-row">Lieferung <span>CHF {{ "%.2f"|format(settings.delivery_fee) }}</span></p>{% endif %}
+  <p class="cart-sub" id="co-delivery-row" hidden>Lieferung <span id="co-delivery-fee"></span></p>
 
   {% if both_types %}
   <div class="co-seg" role="radiogroup" aria-label="Abholung oder Lieferung">
@@ -63,8 +65,8 @@
     <label>Ort
       <input type="text" name="customer_city" value="{{ contact.customer_city or '' }}" autocomplete="address-level2" maxlength="60">
     </label>
-    <p class="co-zip-hint" id="co-zip-hint" hidden>Leider liefern wir nicht in diese PLZ. Abholung ist möglich.</p>
   </div>
+  <p class="co-zip-hint" id="co-zip-hint" hidden></p>
 
   {% if not (payment_options | selectattr(0, "equalto", "online") | list) %}
   <p class="co-pay-info">ℹ️ Online-Zahlung ist momentan nicht möglich. Aktuell bezahlst du bei {{ "Lieferung" if settings.delivery_enabled and not settings.pickup_enabled else ("Abholung" if settings.pickup_enabled and not settings.delivery_enabled else "Lieferung oder Abholung") }} mit Karte, Twint oder bar.</p>
@@ -88,23 +90,35 @@
 (function () {
   var form = document.getElementById('checkout-form');
   var fields = document.getElementById('delivery-fields');
-  var zips = (form.dataset.zips || '').split(',').filter(Boolean);
-  var base = parseFloat(form.dataset.total), fee = parseFloat(form.dataset.deliveryFee) || 0;
+  var zones = JSON.parse(form.dataset.zones || '{}'), hasZones = form.dataset.hasZones === '1';
+  var base = parseFloat(form.dataset.total), goods = parseFloat(form.dataset.goods);
+  var defFee = parseFloat(form.dataset.defaultFee) || 0, defMin = parseFloat(form.dataset.defaultMin) || 0;
+  var pickupMin = parseFloat(form.dataset.pickupMin) || 0;
   var zipInput = form.querySelector('[name=customer_zip]'), hint = document.getElementById('co-zip-hint');
   var row = document.getElementById('co-delivery-row'), submit = document.getElementById('co-submit');
   function isDelivery() {
     var r = form.querySelector('input[name=order_type]:checked');
     return r ? r.value === 'delivery' : {{ 'true' if (settings.delivery_enabled and not settings.pickup_enabled) else 'false' }};
   }
+  function money(n) { return 'CHF ' + n.toFixed(2); }
   function refresh() {
-    var d = isDelivery();
+    var d = isDelivery(), plz = zipInput.value.trim(), fee = 0, min = pickupMin, msg = '';
     fields.hidden = !d;
     fields.querySelectorAll('input').forEach(function (i) { i.required = d; });
-    if (row) row.hidden = !d;
-    document.getElementById('co-btn-total').textContent = 'CHF ' + (base + (d ? fee : 0)).toFixed(2);
-    var bad = d && zips.length && zipInput.value.trim() && zips.indexOf(zipInput.value.trim()) === -1;
-    hint.hidden = !bad;
-    submit.disabled = !!bad;
+    if (d) {
+      if (!hasZones) { fee = defFee; min = defMin; }
+      else if (plz && zones[plz]) { fee = zones[plz].fee; min = zones[plz].min; }
+      else if (plz) { msg = 'Leider liefern wir nicht in diese PLZ. Abholung ist möglich.'; }
+    }
+    if (!msg && goods < min) {
+      msg = (d ? 'Mindestbestellwert für die Lieferung' + (plz ? ' nach ' + plz : '') : 'Mindestbestellwert') + ': ' + money(min) + ' (es fehlen ' + money(min - goods) + ').';
+    }
+    row.hidden = !(d && fee > 0);
+    document.getElementById('co-delivery-fee').textContent = money(fee);
+    document.getElementById('co-btn-total').textContent = money(base + fee);
+    hint.textContent = msg;
+    hint.hidden = !msg;
+    submit.disabled = !!msg;
   }
   function label() {
     var p = form.querySelector('input[name=payment]:checked');

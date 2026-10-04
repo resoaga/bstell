@@ -87,6 +87,7 @@ class MenuItem(Base):
     price = Column(Float, nullable=False)
     is_available = Column(Boolean, default=True)
     is_new = Column(Boolean, default=False)
+    is_vegetarian = Column(Boolean, default=False, nullable=False)
     sort_order = Column(Integer, default=0)
     image_filename = Column(String, default="")
     # Temporary sold-out set from the shop (Freiwirt): orderable again after this moment
@@ -415,3 +416,22 @@ class AuditLog(Base):
     ip = Column(String, default="")
     action = Column(String, nullable=False)
     detail = Column(String, default="")
+
+
+class DeliveryZone(Base):
+    """Delivery area: a group of postcodes with its own delivery fee and minimum order value
+    (e.g. near = 20.- minimum, far = 50.- plus higher fee). Without any zone the shop delivers
+    everywhere with the default fee / minimum from the order settings."""
+
+    __tablename__ = "delivery_zones"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, default="Zone")
+    zips = Column(String, default="")  # "4133, 4132"
+    delivery_fee = Column(Float, default=0.0)
+    min_order = Column(Float, default=0.0)
+    sort_order = Column(Integer, default=0)
+
+    @property
+    def zip_list(self) -> list:
+        return sorted({z for z in self.zips.replace(",", " ").split() if z})

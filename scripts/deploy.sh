@@ -32,6 +32,7 @@ if "$APP_PY" -c "import sys; sys.exit(0 if sys.prefix == sys.base_prefix else 1)
 echo "== DB-Migrationen =="
 python3 scripts/migrate_option_library.py || true
 python3 scripts/add_columns.py || true
+python3 scripts/migrate_zones.py || true
 python3 scripts/upgrade_sauce.py || true
 
 echo "== Neustart =="

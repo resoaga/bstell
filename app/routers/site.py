@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from .. import cart as cart_lib
 from .. import availability
 from .. import customer as cust
+from .. import zones as zones_lib
 from .. import timeutil
 from ..assets import css_version
 from .. import orderflow, payrexx
@@ -127,6 +128,7 @@ def site_extra(request: Request, db: Session) -> dict:
         "canonical_url": base_url + request.url.path,
         "cart_removed": removed,
         "shop": shop,
+        "cart_min": zones_lib.cart_minimum(settings, zones_lib.load_zones(db)),
         "can_order": shop["can_order"],
         "service_fee": cart_fee,
         "service_fee_text": cart_lib.service_fee_text(settings),
@@ -289,7 +291,7 @@ def cart_page(request: Request, db: Session = Depends(get_db)):
             "hide_cart": True,
             "lines": lines,
             "total": total,
-            "below_minimum": total > 0 and total < settings.minimum_order_value,
+            "below_minimum": total > 0 and total < zones_lib.cart_minimum(settings, zones_lib.load_zones(db)),
             **site_extra(request, db),
         },
     )
@@ -312,7 +314,7 @@ async def update_cart_quantity(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "lines": lines,
             "total": total,
-            "below_minimum": total > 0 and total < settings.minimum_order_value,
+            "below_minimum": total > 0 and total < zones_lib.cart_minimum(settings, zones_lib.load_zones(db)),
             **site_extra(request, db),
         },
     )
@@ -330,7 +332,7 @@ async def remove_cart_line(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "lines": lines,
             "total": total,
-            "below_minimum": total > 0 and total < settings.minimum_order_value,
+            "below_minimum": total > 0 and total < zones_lib.cart_minimum(settings, zones_lib.load_zones(db)),
             **site_extra(request, db),
         },
     )
@@ -355,10 +357,6 @@ def last_contact(request: Request, db: Session) -> dict:
     }
 
 
-def allowed_zips(settings) -> list:
-    return [z for z in re.split(r"[\s,;]+", settings.delivery_zips or "") if z]
-
-
 def checkout_context(request: Request, db: Session, contact: dict, **extra) -> dict:
     lines, total = cart_lib.resolve_cart_lines(request, db)
     settings = get_settings(db)
@@ -367,10 +365,11 @@ def checkout_context(request: Request, db: Session, contact: dict, **extra) -> d
         "hide_cart": True,
         "lines": lines,
         "total": total,
-        "below_minimum": total > 0 and total < settings.minimum_order_value,
+        "below_minimum": total > 0 and total < zones_lib.cart_minimum(settings, zones_lib.load_zones(db)),
         "contact": contact,
         "t0": int(time.time()),
-        "zips": allowed_zips(settings),
+        "zones_json": json.dumps(zones_lib.zones_for_js(zones_lib.load_zones(db))),
+        "has_zones": bool(zones_lib.load_zones(db)),
         "payment_options": [
             (k, v, PAYMENT_HINTS[k]) for k, v in PAYMENT_LABELS.items() if k != "online" or payrexx.available(settings)
         ],
@@ -403,11 +402,6 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
         return error_response(closed_message(settings, shop))
     if not lines:
         return error_response("Der Warenkorb ist leer.")
-    if total < settings.minimum_order_value:
-        return error_response(
-            f"Mindestbestellwert ist CHF {settings.minimum_order_value:.2f}."
-        )
-
     blocked = [l for l in lines if l["blocked_until"]]
     if blocked:
         names = ", ".join(f'{l["item"].name} ({availability.describe(l["blocked_until"])})' for l in blocked)
@@ -440,11 +434,18 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
     if order_type == OrderType.delivery:
         if not delivery_address or not customer_zip or not customer_city:
             return error_response("Bitte Strasse, PLZ und Ort für die Lieferung angeben.")
-        zips = allowed_zips(settings)
-        if zips and customer_zip not in zips:
+        deliverable, delivery_fee, minimum, _zone = zones_lib.delivery_terms(
+            settings, zones_lib.load_zones(db), customer_zip
+        )
+        if not deliverable:
             return error_response(f"Leider liefern wir nicht nach {customer_zip}. Abholung ist möglich.")
+        if total < minimum:
+            return error_response(f"Für die Lieferung nach {customer_zip} beträgt der Mindestbestellwert CHF {minimum:.2f}.")
     else:
         customer_zip = customer_city = ""
+        delivery_fee = 0.0
+        if total < (settings.minimum_order_value or 0.0):
+            return error_response(f"Mindestbestellwert ist CHF {settings.minimum_order_value:.2f}.")
 
     identity = cust.read_identity(request)
     device_key = identity["k"] or cust.new_device_key()
@@ -461,7 +462,7 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
         return error_response("Zu viele Bestellungen in kurzer Zeit. Bitte rufe uns kurz an" + (f": {settings.phone}" if settings.phone else "") + ".")
     orderflow.register_ip(ip)
     service_fee = cart_lib.service_fee_for(settings, total)
-    order_total = total + service_fee + (settings.delivery_fee if order_type == OrderType.delivery else 0.0)
+    order_total = total + service_fee + delivery_fee
     order = Order(
         customer_name=customer_name,
         phone=phone,

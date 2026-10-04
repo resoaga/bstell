@@ -1026,3 +1026,6 @@ body.site .item-dialog { overscroll-behavior: contain; -webkit-overflow-scrollin
 .zip-x { background: none; border: 0; color: #1a56c4; font-size: 20px; line-height: 1; width: 30px; height: 30px; min-height: 0; padding: 0; border-radius: 50%; cursor: pointer; }
 .zip-x:hover, .zip-x:active { background: #c62828; color: #fff; }
 .zip-add { margin-top: 14px; }
+
+/* Vegetarian seal on menu cards */
+body.site .veg-badge { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; margin-left: 4px; padding: 2px 7px; border-radius: 10px; background: #e3f4e6; color: #1e7e34; font-size: 11px; font-weight: 700; white-space: nowrap; }

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit
 from .. import customer as cust
+from .. import zones as zones_lib
 from .. import orderflow
 from ..auth import require_admin, verify_same_origin
 from .. import timeutil
@@ -34,6 +35,7 @@ from ..models import (
     Option,
     OptionGroup,
     AuditLog,
+    DeliveryZone,
     AvailabilityRule,
     LoginLink,
     Order,
@@ -388,11 +390,12 @@ async def create_item(
     description: str = Form(""),
     price: float = Form(...),
     category_id: int = Form(...),
+    is_vegetarian: bool = Form(False),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     audit.note(request, f"{name}, CHF {price:.2f}")
-    item = MenuItem(name=name, description=description, price=price, category_id=category_id)
+    item = MenuItem(name=name, description=description, price=price, category_id=category_id, is_vegetarian=is_vegetarian)
     if image is not None and image.filename:
         item.image_filename = await save_uploaded_image(image, "item", max_side=720)
     db.add(item)
@@ -427,6 +430,7 @@ async def update_item(
     description: str = Form(""),
     price: float = Form(...),
     category_id: int = Form(...),
+    is_vegetarian: bool = Form(False),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
@@ -443,6 +447,7 @@ async def update_item(
     item.description = description
     item.price = price
     item.category_id = category_id
+    item.is_vegetarian = is_vegetarian
     if image is not None and image.filename:
         old = item.image_filename
         item.image_filename = await save_uploaded_image(image, "item", max_side=720)
@@ -918,6 +923,23 @@ def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)
     return response
 
 
+@router.post("/orders/{order_id}/resend", dependencies=mutating)
+def resend_receipt(order_id: int, request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
+    """Sends the order confirmation (with receipt link) to the customer again."""
+    from ..mailer import mail_configured
+
+    order = db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if not order.email:
+        raise HTTPException(status_code=400, detail="Bei dieser Bestellung ist keine E-Mail-Adresse hinterlegt.")
+    if not mail_configured(get_settings(db)):
+        raise HTTPException(status_code=400, detail="E-Mail-Versand ist nicht eingerichtet (Einstellungen → E-Mail).")
+    audit.note(request, f"#{order.id} an {order.email}")
+    background.add_task(orderflow.send_confirmation, order.id, cust.public_base_url(request), True)
+    return Response(status_code=204)
+
+
 @router.post("/orders/{order_id}/cancel", dependencies=mutating)
 def cancel_order(
     order_id: int,
@@ -1177,55 +1199,111 @@ def settings_delivery_zone(request: Request, db: Session = Depends(get_db)):
         "admin/settings_delivery_zone.html",
         {
             "request": request,
-            "zips": _zip_list(get_settings(db)),
+            "zones": zones_lib.load_zones(db),
             "error": request.query_params.get("error", ""),
             **settings_context("delivery-zone", db),
         },
     )
 
 
-@router.post("/settings/delivery-zone", dependencies=mutating)
-def update_delivery_zone_settings(
-    delivery_zone_center: str = Form(""),
-    delivery_zone_radius_km: float = Form(0.0),
+def _zones_back(error: str = ""):
+    suffix = f"?error={quote_plus(error)}" if error else ""
+    return RedirectResponse(url="/admin/settings/delivery-zone" + suffix, status_code=303)
+
+
+def _parse_zips(raw: str, db: Session, own_zone_id: Optional[int] = None):
+    """(new valid zips, error text). A postcode may belong to one zone only."""
+    tokens = [z for z in re.split(r"[\s,;]+", raw) if z]
+    valid = [z for z in tokens if re.fullmatch(r"\d{4}", z)]
+    problems = []
+    if len(valid) != len(tokens):
+        problems.append("Keine gültige PLZ (4 Ziffern): " + ", ".join(z for z in tokens if z not in valid))
+    taken = {}
+    for zone in zones_lib.load_zones(db):
+        if zone.id != own_zone_id:
+            for z in zone.zip_list:
+                taken[z] = zone.name
+    clash = [f"{z} (schon in {taken[z]})" for z in valid if z in taken]
+    if clash:
+        problems.append("Gehört schon zu einer anderen Zone: " + ", ".join(clash))
+    return [z for z in valid if z not in taken], " – ".join(problems)
+
+
+@router.post("/settings/zones/new", dependencies=mutating)
+def create_zone(
+    request: Request,
+    name: str = Form(""),
+    delivery_fee: float = Form(0.0),
+    min_order: float = Form(0.0),
+    zips: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    settings = get_settings(db)
-    settings.delivery_zone_center = delivery_zone_center
-    settings.delivery_zone_radius_km = delivery_zone_radius_km
+    valid, error = _parse_zips(zips, db)
+    zone = DeliveryZone(
+        name=name.strip()[:40] or "Neue Zone",
+        zips=", ".join(sorted(set(valid))),
+        delivery_fee=max(0.0, delivery_fee),
+        min_order=max(0.0, min_order),
+        sort_order=len(zones_lib.load_zones(db)),
+    )
+    db.add(zone)
     db.commit()
-    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
+    audit.note(request, f"{zone.name}: Lieferkosten {zone.delivery_fee:.2f}, ab {zone.min_order:.2f}, PLZ {zone.zips or '-'}")
+    return _zones_back(error)
 
 
-def _zip_list(settings) -> list:
-    return sorted({z for z in re.split(r"[\s,;]+", settings.delivery_zips or "") if z})
-
-
-@router.post("/settings/delivery-zips/add", dependencies=mutating)
-def add_delivery_zips(zips: str = Form(""), db: Session = Depends(get_db)):
-    settings = get_settings(db)
-    tokens = [z for z in re.split(r"[\s,;]+", zips) if z]
-    valid = [z for z in tokens if re.fullmatch(r"\d{4}", z)]
-    invalid = [z for z in tokens if z not in valid]
-    settings.delivery_zips = ", ".join(sorted(set(_zip_list(settings)) | set(valid)))
+@router.post("/settings/zones/{zone_id}", dependencies=mutating)
+def update_zone(
+    zone_id: int,
+    request: Request,
+    name: str = Form(""),
+    delivery_fee: float = Form(0.0),
+    min_order: float = Form(0.0),
+    db: Session = Depends(get_db),
+):
+    zone = db.get(DeliveryZone, zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone nicht gefunden")
+    zone.name = name.strip()[:40] or zone.name
+    zone.delivery_fee = max(0.0, delivery_fee)
+    zone.min_order = max(0.0, min_order)
     db.commit()
-    error = f"?error={quote_plus('Keine gültige PLZ (4 Ziffern): ' + ', '.join(invalid))}" if invalid else ""
-    return RedirectResponse(url="/admin/settings/delivery-zone" + error, status_code=303)
+    audit.note(request, f"{zone.name}: Lieferkosten {zone.delivery_fee:.2f}, ab {zone.min_order:.2f}")
+    return _zones_back()
 
 
-@router.post("/settings/delivery-zips/remove", dependencies=mutating)
-def remove_delivery_zip(zip: str = Form(""), db: Session = Depends(get_db)):
-    settings = get_settings(db)
-    settings.delivery_zips = ", ".join(z for z in _zip_list(settings) if z != zip.strip())
+@router.post("/settings/zones/{zone_id}/zips/add", dependencies=mutating)
+def add_zone_zips(zone_id: int, request: Request, zips: str = Form(""), db: Session = Depends(get_db)):
+    zone = db.get(DeliveryZone, zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone nicht gefunden")
+    valid, error = _parse_zips(zips, db, own_zone_id=zone.id)
+    zone.zips = ", ".join(sorted(set(zone.zip_list) | set(valid)))
     db.commit()
-    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
+    audit.note(request, f"{zone.name}: PLZ {', '.join(valid) or '-'} hinzugefügt")
+    return _zones_back(error)
 
 
-@router.post("/settings/delivery-zips/clear", dependencies=mutating)
-def clear_delivery_zips(db: Session = Depends(get_db)):
-    get_settings(db).delivery_zips = ""
+@router.post("/settings/zones/{zone_id}/zips/remove", dependencies=mutating)
+def remove_zone_zip(zone_id: int, request: Request, zip: str = Form(""), db: Session = Depends(get_db)):
+    zone = db.get(DeliveryZone, zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone nicht gefunden")
+    zone.zips = ", ".join(z for z in zone.zip_list if z != zip.strip())
     db.commit()
-    return RedirectResponse(url="/admin/settings/delivery-zone", status_code=303)
+    audit.note(request, f"{zone.name}: PLZ {zip.strip()} entfernt")
+    return _zones_back()
+
+
+@router.post("/settings/zones/{zone_id}/delete", dependencies=mutating)
+def delete_zone(zone_id: int, request: Request, db: Session = Depends(get_db)):
+    zone = db.get(DeliveryZone, zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone nicht gefunden")
+    audit.note(request, f"{zone.name} (PLZ {zone.zips or '-'})")
+    db.delete(zone)
+    db.commit()
+    return _zones_back()
 
 
 @router.get("/settings/payment")

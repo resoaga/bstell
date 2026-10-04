@@ -40,7 +40,7 @@
       <img class="item-thumb" src="/static/uploads/{{ item.image_filename }}" alt="" loading="lazy">
       {% endif %}
       <div class="item-info">
-        <strong>{{ item.name }}</strong>
+        <strong>{{ item.name }}</strong>{% if item.is_vegetarian %} <span class="veg" title="Vegetarisch">V</span>{% endif %}
         <span class="price">CHF {{ "%.2f"|format(item.price) }}</span>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
       </div>

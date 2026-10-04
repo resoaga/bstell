@@ -165,11 +165,11 @@ label input, label select, label textarea { margin-top: 3px; font-weight: 400; }
 .notice.ok { background: var(--ok-bg); color: #14602f; }
 
 /* Forms inside cards: fields side by side, long things full width */
-section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform) {
+section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform):not(.zone-head) {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 14px; align-items: end;
 }
-section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform) > :is(.hint, button, details, .option-choice, label:has(textarea), fieldset) { grid-column: 1 / -1; }
-section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform) > button[type=submit] { justify-self: start; }
+section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform):not(.zone-head) > :is(.hint, button, details, .option-choice, label:has(textarea), fieldset) { grid-column: 1 / -1; }
+section.category > form:not(.inline):not(.inline-form):not(.zip-add):not(.fform):not(.zone-head) > button[type=submit] { justify-self: start; }
 section.category > form > label { margin: 0; }
 section.category > form > .hint { margin: -4px 0 0; }
 form.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
@@ -466,3 +466,18 @@ section.category > form.fform { display: flex; flex-direction: column; gap: 10px
 .switch.is-on .switch-track { background: var(--ok); }
 .switch.is-on .switch-track i { transform: translateX(18px); }
 .switch-text { display: flex; flex-direction: column; line-height: 1.2; }
+
+/* ---- Delivery zones ---- */
+section.category > form.zone-head { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; }
+.zone-head .grow { flex: 1 1 180px; }
+.zone-head .w-money { flex: 0 1 175px; }
+.zone-zips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; }
+.zone-zips .zip-chips { margin: 0; }
+.zone-zips .zip-add { margin: 0; flex: 1 1 260px; align-items: center; }
+.zone-zips .zip-add input { flex: 1; }
+
+.veg { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 4px; border-radius: 50%; background: var(--ok-bg); color: #14602f; font-size: 10px; font-weight: 800; vertical-align: middle; }
+
+.ord-tools { display: flex; gap: 10px; margin-top: 2px; font-size: 12.5px; }
+.ord-tools a, button.linkish { min-height: 0; padding: 0; background: none; border: 0; color: var(--info); font-weight: 600; font-size: 12.5px; text-decoration: none; display: inline; }
+.ord-tools a:hover, button.linkish:hover { background: none; text-decoration: underline; }

@@ -25,6 +25,7 @@
       <label>Beschreibung
         <textarea name="description" rows="2">{{ item.description if item else '' }}</textarea>
       </label>
+      <label class="checkbox-label"><input type="checkbox" name="is_vegetarian" value="true" {{ "checked" if item and item.is_vegetarian else "" }}> Vegetarisch (grünes Siegel auf der Webseite)</label>
       <div class="form-actions">
         <button type="submit">Speichern</button>
         {% if item %}<button type="submit" class="danger" formaction="/admin/items/{{ item.id }}/delete" formnovalidate
