@@ -194,6 +194,33 @@ DASH_PERIODS = {"today": ("Heute", 1), "7": ("7 Tage", 7), "30": ("30 Tage", 30)
 WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 
+QUICK_SWITCHES = [
+    ("accepting_orders", "Bestellungen annehmen", "Aus = Laden ist zu"),
+    ("delivery_enabled", "Lieferung", "Aus = nur Abholung"),
+    ("pickup_enabled", "Abholung", "Aus = nur Lieferung"),
+]
+
+
+def _switches_response(request: Request, db: Session):
+    settings = get_settings(db)
+    rows = [(key, label, hint, bool(getattr(settings, key))) for key, label, hint in QUICK_SWITCHES]
+    return templates.TemplateResponse("admin/_quick_switches.html", {"request": request, "rows": rows})
+
+
+@router.post("/quick/{field}", dependencies=mutating)
+def quick_switch(field: str, request: Request, db: Session = Depends(get_db)):
+    """One-tap on/off for the website (dashboard switches)."""
+    names = {key: label for key, label, _ in QUICK_SWITCHES}
+    if field not in names:
+        raise HTTPException(status_code=404, detail="Unbekannter Schalter")
+    settings = get_settings(db)
+    new_value = not getattr(settings, field)
+    setattr(settings, field, new_value)
+    db.commit()
+    audit.note(request, f"{names[field]}: {'an' if new_value else 'aus'}")
+    return _switches_response(request, db)
+
+
 @router.get("")
 def dashboard(request: Request, p: str = "7", db: Session = Depends(get_db)):
     """Start page: how busy was it, when, and what sells. No money figures on purpose."""
@@ -248,6 +275,7 @@ def dashboard(request: Request, p: str = "7", db: Session = Depends(get_db)):
         {
             "request": request,
             "p": p,
+            "rows": [(k, l, h, bool(getattr(get_settings(db), k))) for k, l, h in QUICK_SWITCHES],
             "periods": {k: v[0] for k, v in DASH_PERIODS.items()},
             "total": total,
             "cancelled": cancelled,

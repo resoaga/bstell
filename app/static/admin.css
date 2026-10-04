@@ -456,3 +456,15 @@ section.category > form.fform { display: flex; flex-direction: column; gap: 10px
 .help { width: 100%; font-size: 12.5px; color: var(--muted); }
 .help summary { display: inline-block; font-weight: 600; font-size: 12.5px; color: var(--info); padding: 0; }
 .help p { margin: 6px 0 0; max-width: 80ch; }
+
+/* ---- Quick switches (dashboard) ---- */
+.quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.switch { flex: 1 1 200px; justify-content: flex-start; gap: 10px; min-height: 52px; padding: 8px 12px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 10px; text-align: left; white-space: normal; }
+.switch:hover { background: #faf9f6; border-color: #b9b6ac; }
+.switch-track { flex: none; width: 40px; height: 22px; border-radius: 11px; background: #c9c6bd; position: relative; transition: background .15s; }
+.switch-track i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.switch.is-on .switch-track { background: var(--ok); }
+.switch.is-on .switch-track i { transform: translateX(18px); }
+.switch-text { display: flex; flex-direction: column; line-height: 1.2; }
+.switch-text small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.switch:not(.is-on) .switch-text small { color: var(--danger); font-weight: 600; }

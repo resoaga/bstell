@@ -1,0 +1,9 @@
+<div class="quick" id="quick-switches">
+  {% for key, label, hint, on in rows %}
+  <button type="button" class="switch {{ 'is-on' if on }}" role="switch" aria-checked="{{ 'true' if on else 'false' }}"
+          hx-post="/admin/quick/{{ key }}" hx-target="#quick-switches" hx-swap="outerHTML">
+    <span class="switch-track"><i></i></span>
+    <span class="switch-text"><b>{{ label }}</b><small>{{ 'An' if on else hint }}</small></span>
+  </button>
+  {% endfor %}
+</div>

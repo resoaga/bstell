@@ -8,6 +8,7 @@ from .models import AuditLog
 
 # (regex on the path after /admin, readable action). First match wins.
 ACTIONS = [
+    (r"^/quick/", "Schalter umgelegt"),
     (r"^/categories$", "Kategorie angelegt"),
     (r"^/categories/\d+/promo$", "Hero-Aktion einer Kategorie umgeschaltet"),
     (r"^/categories/\d+/delete$", "Kategorie gelöscht"),
