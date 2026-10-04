@@ -40,6 +40,7 @@ from ..repo import (
     is_currently_open,
     effective_shop,
     shop_status,
+    seller_ranking,
     top_seller_ids,
 )
 
@@ -170,7 +171,18 @@ def homepage(request: Request, db: Session = Depends(get_db)):
                 cat_block[category.id] = availability.describe(max(timed))
     top_ids = top_seller_ids(db)
     by_id = {item.id: item for category in categories for item in category.items}
-    promo_items = [by_id[i] for i in top_ids if i in by_id and i not in item_block]
+    # Hero slides: best sellers first, then Hot, New, then anything with a photo; max 8
+    pool = [i for i, _ in seller_ranking(db)]
+    pool += [it.id for it in by_id.values() if it.is_hot]
+    pool += [it.id for it in by_id.values() if it.is_new]
+    pool += [it.id for it in by_id.values() if it.image_filename]
+    pool += list(by_id)  # still short of five: any remaining article
+    promo_items, seen = [], set()
+    for i in top_ids + pool:
+        if i in by_id and i not in seen and i not in item_block and by_id[i].is_available:
+            seen.add(i)
+            promo_items.append(by_id[i])
+    promo_items = promo_items[:8] if len(promo_items) >= 3 else []
     return templates.TemplateResponse(
         "site/index.html",
         {

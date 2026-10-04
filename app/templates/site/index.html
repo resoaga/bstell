@@ -1,17 +1,21 @@
 {% extends "site/site_base.html" %}
 {% block content %}
 {% if promo_items %}
-<section class="hero hero-top" aria-labelledby="top-title">
+<section class="hero-top" aria-labelledby="top-title">
   <div class="top-head">
-    <h2 id="top-title">Meistverkauft diese Woche</h2>
+    <h2 id="top-title">Beliebt diese Woche</h2>
+    <div class="top-nav">
+      <button type="button" class="top-arrow" data-dir="-1" aria-label="Zurück">‹</button>
+      <button type="button" class="top-arrow" data-dir="1" aria-label="Weiter">›</button>
+    </div>
   </div>
-  <div class="top-row">
+  <div class="top-row" id="top-row">
     {% for item in promo_items %}
     <article class="top-card">
-      <span class="top-rank" aria-label="Platz {{ loop.index }}">{{ loop.index }}</span>
-      {% if item.image_filename %}
-      <div class="top-photo"><img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="lazy" onerror="this.parentElement.remove()"></div>
-      {% endif %}
+      <div class="top-photo">
+        {% if item.image_filename %}<img src="/static/uploads/{{ item.image_filename }}" alt="{{ item.name }}" loading="{{ 'eager' if loop.index <= 2 else 'lazy' }}" onerror="this.remove()">{% endif %}
+        {% if item.id in top_ids %}<span class="badge-new badge-top">Meistverkauft</span>{% elif item.is_hot %}<span class="badge-new badge-hot">Hot</span>{% elif item.is_new %}<span class="badge-new">Neu</span>{% endif %}
+      </div>
       <div class="top-body">
         <strong>{{ item.name }}</strong>
         {% if item.description %}<p>{{ item.description }}</p>{% endif %}
@@ -198,6 +202,16 @@
         document.querySelectorAll('.category').forEach(function (section) {
           var visible = section.querySelectorAll('.menu-card:not(.is-hidden)').length > 0;
           section.classList.toggle('is-hidden', query.length > 0 && !visible);
+        });
+      });
+    }
+
+    var topRow = document.getElementById('top-row');
+    if (topRow) {
+      document.querySelectorAll('.top-arrow').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var card = topRow.querySelector('.top-card');
+          topRow.scrollBy({ left: parseInt(btn.dataset.dir, 10) * (card ? card.offsetWidth + 14 : 280), behavior: 'smooth' });
         });
       });
     }

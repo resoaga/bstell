@@ -112,14 +112,14 @@ def get_all_content_pages(db: Session):
 TOP_DAYS = 7
 TOP_COUNT = 3
 TOP_MIN_QTY = 3  # an article must have sold at least this often to count as "most sold"
-_top_cache = {"at": 0.0, "ids": []}
+_top_cache = {"at": 0.0, "rows": []}
 
 
-def top_seller_ids(db: Session) -> list:
-    """Ids of the best selling available articles of the last 7 days (best first).
+def seller_ranking(db: Session) -> list:
+    """[(item_id, quantity)] of available articles sold in the last 7 days, best first.
     Cancelled / unpaid orders do not count. Cached for a few minutes."""
     if time.time() - _top_cache["at"] < 300:
-        return _top_cache["ids"]
+        return _top_cache["rows"]
     since = datetime.utcnow() - timedelta(days=TOP_DAYS)
     rows = (
         db.query(OrderItem.item_name, func.sum(OrderItem.quantity).label("qty"))
@@ -130,6 +130,11 @@ def top_seller_ids(db: Session) -> list:
         .all()
     )
     by_name = {i.name: i.id for i in db.query(MenuItem).filter(MenuItem.is_available == True).all()}  # noqa: E712
-    ids = [by_name[name] for name, qty in rows if qty >= TOP_MIN_QTY and name in by_name][:TOP_COUNT]
-    _top_cache.update(at=time.time(), ids=ids)
-    return ids
+    ranking = [(by_name[name], int(qty)) for name, qty in rows if name in by_name]
+    _top_cache.update(at=time.time(), rows=ranking)
+    return ranking
+
+
+def top_seller_ids(db: Session) -> list:
+    """The "Meistverkauft" articles: top 3 of the week, each sold at least TOP_MIN_QTY times."""
+    return [i for i, qty in seller_ranking(db) if qty >= TOP_MIN_QTY][:TOP_COUNT]
