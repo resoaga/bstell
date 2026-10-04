@@ -1,22 +1,15 @@
 <div id="option-links">
   {% for link in item.option_links %}
-  <div class="option-group">
-    <div class="option-group-header">
-      <a href="/admin/option-groups/{{ link.option_group.id }}"><strong>{{ link.option_group.name }}</strong></a>
-      <span class="tag">{{ "Einzelauswahl" if link.option_group.selection_type.value == "single" else "Mehrfachauswahl" }} · {{ link.option_group.options|length }} Optionen</span>
-    </div>
-    <form hx-post="/admin/option-links/{{ link.id }}/update" hx-target="#option-links" hx-swap="outerHTML"
-          class="inline-form">
-      <label class="checkbox-label"><input type="checkbox" name="required" value="true" {{ "checked" if link.required else "" }}> Pflicht</label>
-      {% if link.option_group.selection_type.value == "multiple" %}
-      <input type="number" name="max_selections" placeholder="Max. Auswahl" min="1" value="{{ link.max_selections or '' }}">
-      {% endif %}
-      <button type="submit">Speichern</button>
-    </form>
-    <form hx-post="/admin/option-links/{{ link.id }}/delete" hx-target="#option-links" hx-swap="outerHTML" class="inline">
-      <button type="submit" class="danger small">Entfernen</button>
-    </form>
-  </div>
+  <form class="link-row" hx-post="/admin/option-links/{{ link.id }}/update" hx-target="#option-links" hx-swap="outerHTML">
+    <span class="link-name"><a href="/admin/option-groups/{{ link.option_group.id }}">{{ link.option_group.name }}</a>
+      <span class="tag">{{ "Einzel" if link.option_group.selection_type.value == "single" else "Mehrfach" }} · {{ link.option_group.options|length }}</span></span>
+    <label class="checkbox-label"><input type="checkbox" name="required" value="true" {{ "checked" if link.required else "" }}> Pflicht</label>
+    {% if link.option_group.selection_type.value == "multiple" %}
+    <input type="number" name="max_selections" placeholder="Max." aria-label="Max. Auswahl" min="1" value="{{ link.max_selections or '' }}" class="w-num">
+    {% endif %}
+    <button type="submit" class="small">Speichern</button>
+    <button type="button" class="danger small" hx-post="/admin/option-links/{{ link.id }}/delete" hx-target="#option-links" hx-swap="outerHTML">Entfernen</button>
+  </form>
   {% else %}
   <p class="empty">Noch keine Optionsgruppen zugewiesen.</p>
   {% endfor %}
@@ -24,16 +17,13 @@
   {% set assigned = item.option_links | map(attribute="option_group_id") | list %}
   {% set available = library | rejectattr("id", "in", assigned) | list %}
   {% if available %}
-  <form hx-post="/admin/items/{{ item.id }}/option-links" hx-target="#option-links" hx-swap="outerHTML"
-        class="inline-form">
-    <select name="option_group_id" required>
-      {% for group in available %}
-      <option value="{{ group.id }}">{{ group.name }}</option>
-      {% endfor %}
+  <form class="link-row link-add" hx-post="/admin/items/{{ item.id }}/option-links" hx-target="#option-links" hx-swap="outerHTML">
+    <select name="option_group_id" required aria-label="Gruppe">
+      {% for group in available %}<option value="{{ group.id }}">{{ group.name }}</option>{% endfor %}
     </select>
     <label class="checkbox-label"><input type="checkbox" name="required" value="true"> Pflicht</label>
-    <input type="number" name="max_selections" placeholder="Max. Auswahl (nur Mehrfach)" min="1">
-    <button type="submit">Gruppe zuweisen</button>
+    <input type="number" name="max_selections" placeholder="Max." aria-label="Max. Auswahl (nur Mehrfach)" min="1" class="w-num">
+    <button type="submit" class="small">Zuweisen</button>
   </form>
   {% else %}
   <p class="hint">Alle vorhandenen Gruppen sind zugewiesen.</p>

@@ -12,14 +12,17 @@
 <body>
   {% set path = request.url.path %}
   <header class="topbar">
-    <a class="brand" href="/admin/orders"><span class="brand-mark">A</span>Admin</a>
+    <a class="brand" href="/admin"><span class="brand-mark">A</span>Admin</a>
     <nav class="topbar-nav" id="topbarNav">
+      <a class="topbar-link {{ 'active' if path.rstrip('/') == '/admin' }}" href="/admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Übersicht</a>
       <a class="topbar-link {{ 'active' if path.startswith('/admin/orders') }}" href="/admin/orders">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l2 5H4z"/><path d="M5 8v12h14V8"/><path d="M10 13h4"/></svg>
         Bestellungen<span hx-get="/admin/orders/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
       <a class="topbar-link {{ 'active' if path.startswith('/admin/menu') or path.startswith('/admin/items') }}" href="/admin/menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-        Menü</a>
+        Artikel</a>
       <a class="topbar-link {{ 'active' if path.startswith('/admin/option-groups') }}" href="/admin/option-groups">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>
         Optionen</a>

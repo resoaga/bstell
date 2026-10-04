@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Übersicht – Admin{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Übersicht</h2>
+  <div class="view-tabs">
+    {% for key, label in periods.items() %}<a class="{{ 'active' if p == key }}" href="/admin?p={{ key }}">{{ label }}</a>{% endfor %}
+  </div>
+</div>
+
+<div class="kpis">
+  <a class="kpi" href="/admin/orders"><b>{{ open_now }}</b><span>offen jetzt</span></a>
+  <div class="kpi"><b>{{ total }}</b><span>Bestellungen</span></div>
+  <div class="kpi"><b>{{ delivery_pct }} %</b><span>Lieferanteil</span></div>
+  <div class="kpi"><b>{{ returning }}<small> / {{ customers }}</small></b><span>Stammkunden</span></div>
+  <div class="kpi {{ 'kpi-bad' if cancelled }}"><b>{{ cancelled }}</b><span>storniert</span></div>
+  <a class="kpi {{ 'kpi-warn' if sold_out }}" href="/admin/menu"><b>{{ sold_out }}</b><span>ausverkauft</span></a>
+</div>
+
+{% if not total %}
+<p class="empty">Im gewählten Zeitraum gibt es noch keine Bestellungen.</p>
+{% else %}
+<div class="dash-grid">
+  <section class="category dash-wide">
+    <h2>Bestellungen pro Tag{% if busiest_day %} <span class="tag">· stärkster Tag {{ busiest_day[0].strftime('%d.%m.') }} mit {{ busiest_day[1] }}</span>{% endif %}</h2>
+    <div class="bars">
+      {% for r in day_rows %}
+      <div class="bar-col" title="{{ r.wd }} {{ r.label }}: {{ r.n }}">
+        <span class="bar-n">{{ r.n or '' }}</span>
+        <div class="bar" style="height: {{ (r.n / day_max * 100)|round|int }}%"></div>
+        <span class="bar-l">{{ r.label if (day_rows|length <= 14 or loop.index0 % 5 == 0) else '' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="category">
+    <h2>Stosszeiten{% if peak_hour is not none %} <span class="tag">· am meisten um {{ peak_hour }} Uhr</span>{% endif %}</h2>
+    <div class="bars">
+      {% for h, n in hours %}
+      <div class="bar-col" title="{{ h }}:00 Uhr: {{ n }}">
+        <span class="bar-n">{{ n or '' }}</span>
+        <div class="bar alt" style="height: {{ (n / hour_max * 100)|round|int }}%"></div>
+        <span class="bar-l">{{ h }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="category">
+    <h2>Wochentage</h2>
+    <div class="bars">
+      {% for wd, n in weekdays %}
+      <div class="bar-col">
+        <span class="bar-n">{{ n or '' }}</span>
+        <div class="bar alt" style="height: {{ (n / weekday_max * 100)|round|int }}%"></div>
+        <span class="bar-l">{{ wd }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="category">
+    <h2>Beliebteste Artikel</h2>
+    <ol class="rank">
+      {% for name, n in top_items %}
+      <li><span class="rank-name">{{ name }}</span><span class="rank-bar"><i style="width: {{ (n / top_max * 100)|round|int }}%"></i></span><b>{{ n }}×</b></li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="category">
+    <h2>Bezahlart</h2>
+    <ol class="rank">
+      {% for label, n in pay %}
+      <li><span class="rank-name">{{ label }}</span><span class="rank-bar"><i style="width: {{ (n / total * 100)|round|int }}%"></i></span><b>{{ n }}</b></li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

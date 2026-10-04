@@ -190,6 +190,87 @@ def settings_context(active_tab: str, db: Session) -> dict:
     }
 
 
+DASH_PERIODS = {"today": ("Heute", 1), "7": ("7 Tage", 7), "30": ("30 Tage", 30)}
+WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+
+@router.get("")
+def dashboard(request: Request, p: str = "7", db: Session = Depends(get_db)):
+    """Start page: how busy was it, when, and what sells. No money figures on purpose."""
+    if p not in DASH_PERIODS:
+        p = "7"
+    days = DASH_PERIODS[p][1]
+    today = timeutil.to_local(datetime.utcnow()).date()
+    first_day = today - timedelta(days=days - 1)
+    start_utc = timeutil.local_midnight_utc() - timedelta(days=days - 1)
+    orders = (
+        db.query(Order)
+        .filter(Order.created_at >= start_utc, Order.status != OrderStatus.awaiting_payment)
+        .all()
+    )
+    valid = [o for o in orders if o.status != OrderStatus.cancelled]
+    cancelled = len(orders) - len(valid)
+
+    per_day = {first_day + timedelta(days=i): 0 for i in range(days)}
+    per_hour = [0] * 24
+    per_weekday = [0] * 7
+    item_counts = {}
+    pay = {"cash": 0, "card": 0, "online": 0}
+    delivery = 0
+    for o in valid:
+        local = timeutil.to_local(o.created_at)
+        per_day[local.date()] = per_day.get(local.date(), 0) + 1
+        per_hour[local.hour] += 1
+        per_weekday[local.weekday()] += 1
+        pay[o.payment_method] = pay.get(o.payment_method, 0) + 1
+        if o.order_type.value == "delivery":
+            delivery += 1
+        for line in o.items:
+            item_counts[line.item_name] = item_counts.get(line.item_name, 0) + line.quantity
+    top_items = sorted(item_counts.items(), key=lambda kv: -kv[1])[:8]
+
+    # Returning customers: phone number seen on an earlier order than this period
+    phones = {o.phone for o in valid}
+    returning = 0
+    if phones:
+        seen_before = {
+            row[0] for row in db.query(Order.phone).filter(Order.created_at < start_utc, Order.phone.in_(phones)).distinct()
+        }
+        returning = len({o.phone for o in valid if o.phone in seen_before})
+    total = len(valid)
+    open_now = db.query(Order).filter(Order.status.in_(OPEN_STATES)).count()
+    sold_out = db.query(MenuItem).filter(MenuItem.is_available == False).count()  # noqa: E712
+    peak_hour = max(range(24), key=lambda h: per_hour[h]) if total else None
+    busiest_day = max(per_day.items(), key=lambda kv: kv[1]) if total else None
+    day_rows = [{"label": d.strftime("%d.%m."), "wd": WEEKDAYS_SHORT[d.weekday()], "n": n} for d, n in per_day.items()]
+    return templates.TemplateResponse(
+        "admin/dashboard.html",
+        {
+            "request": request,
+            "p": p,
+            "periods": {k: v[0] for k, v in DASH_PERIODS.items()},
+            "total": total,
+            "cancelled": cancelled,
+            "open_now": open_now,
+            "sold_out": sold_out,
+            "delivery_pct": round(100 * delivery / total) if total else 0,
+            "returning": returning,
+            "customers": len(phones),
+            "day_rows": day_rows,
+            "day_max": max([r["n"] for r in day_rows] + [1]),
+            "hours": [(h, per_hour[h]) for h in range(8, 24)],
+            "hour_max": max(per_hour + [1]),
+            "weekdays": list(zip(WEEKDAYS_SHORT, per_weekday)),
+            "weekday_max": max(per_weekday + [1]),
+            "top_items": top_items,
+            "top_max": top_items[0][1] if top_items else 1,
+            "pay": [(PAYMENT_LABELS[k], v) for k, v in pay.items() if k in PAYMENT_LABELS],
+            "peak_hour": peak_hour,
+            "busiest_day": busiest_day,
+        },
+    )
+
+
 @router.get("/menu")
 def menu_list(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.sort_order, Category.id).all()

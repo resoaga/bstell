@@ -1,48 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
 <a href="/admin/option-groups" class="back-link">← Alle Optionsgruppen</a>
-<h2>{{ group.name }}</h2>
+<div class="page-head">
+  <h2>{{ group.name }}</h2>
+  <form method="post" action="/admin/option-groups/{{ group.id }}/delete" data-confirm="Gruppe samt Optionen löschen? Sie verschwindet bei allen {{ group.links|length }} Artikeln.">
+    <button type="submit" class="danger small">Gruppe löschen</button>
+  </form>
+</div>
 
-<form method="post" action="/admin/option-groups/{{ group.id }}/rename" class="inline-form">
-  <input type="text" name="name" value="{{ group.name }}" required>
-  <select name="selection_type">
-    <option value="single" {{ "selected" if group.selection_type.value == "single" else "" }}>Einzelauswahl</option>
-    <option value="multiple" {{ "selected" if group.selection_type.value == "multiple" else "" }}>Mehrfachauswahl</option>
-  </select>
-  <button type="submit">Speichern</button>
-</form>
+<section class="category">
+  <form method="post" action="/admin/option-groups/{{ group.id }}/rename" class="inline-form" style="margin-top:0">
+    <input type="text" name="name" value="{{ group.name }}" required aria-label="Name">
+    <select name="selection_type" aria-label="Auswahl">
+      <option value="single" {{ "selected" if group.selection_type.value == "single" else "" }}>Einzelauswahl</option>
+      <option value="multiple" {{ "selected" if group.selection_type.value == "multiple" else "" }}>Mehrfachauswahl</option>
+    </select>
+    <button type="submit">Speichern</button>
+  </form>
+  <h3>Optionen</h3>
+  {% include "admin/_option_group.html" %}
+</section>
 
-<h3>Optionen</h3>
-{% include "admin/_option_group.html" %}
-
-<h3>Artikeln zuweisen</h3>
-<form method="post" action="/admin/option-groups/{{ group.id }}/assign">
-  <div class="inline-form">
-    <label class="checkbox-label"><input type="checkbox" name="required" value="true"
-      {{ "checked" if links_by_item.values() | selectattr("required") | list else "" }}> Pflicht</label>
-    {% if group.selection_type.value == "multiple" %}
-    <input type="number" name="max_selections" placeholder="Max. Auswahl" min="1"
-           value="{{ (links_by_item.values() | map(attribute="max_selections") | select | first) or '' }}">
-    {% endif %}
-  </div>
-  <p class="hint">Gilt für alle angehakten Artikel. Abgewählte Artikel verlieren diese Gruppe.</p>
-  {% for category in categories %}
-  <fieldset>
-    <legend>{{ category.name }}</legend>
-    {% for item in category.items %}
-    <label class="checkbox-label" style="display:flex">
-      <input type="checkbox" name="item_ids" value="{{ item.id }}" {{ "checked" if item.id in links_by_item else "" }}>
-      {{ item.name }}{{ " – Pflicht" if item.id in links_by_item and links_by_item[item.id].required else "" }}
-    </label>
+<section class="category">
+  <h2>Artikeln zuweisen</h2>
+  <form method="post" action="/admin/option-groups/{{ group.id }}/assign">
+    <div class="inline-form" style="margin-top:0">
+      <label class="checkbox-label"><input type="checkbox" name="required" value="true"
+        {{ "checked" if links_by_item.values() | selectattr("required") | list else "" }}> Pflicht</label>
+      {% if group.selection_type.value == "multiple" %}
+      <input type="number" name="max_selections" placeholder="Max. Auswahl" min="1" class="w-num" style="max-width:130px"
+             value="{{ (links_by_item.values() | map(attribute="max_selections") | select | first) or '' }}">
+      {% endif %}
+      <span class="hint" style="margin:0">Gilt für alle angehakten Artikel. Abgewählte verlieren diese Gruppe.</span>
+    </div>
+    {% for category in categories %}
+    <fieldset>
+      <legend>{{ category.name }}</legend>
+      <div class="check-grid">
+      {% for item in category.items %}
+      <label class="checkbox-label">
+        <input type="checkbox" name="item_ids" value="{{ item.id }}" {{ "checked" if item.id in links_by_item else "" }}>
+        {{ item.name }}{{ " · Pflicht" if item.id in links_by_item and links_by_item[item.id].required else "" }}
+      </label>
+      {% endfor %}
+      </div>
+    </fieldset>
     {% endfor %}
-  </fieldset>
-  {% endfor %}
-  <button type="submit">Zuweisung speichern</button>
-</form>
-
-<h3>Gruppe löschen</h3>
-<form method="post" action="/admin/option-groups/{{ group.id }}/delete"
-      data-confirm="Gruppe samt Optionen löschen? Sie verschwindet bei allen {{ group.links|length }} Artikeln.">
-  <button type="submit" class="danger">Gruppe löschen</button>
-</form>
+    <button type="submit">Zuweisung speichern</button>
+  </form>
+</section>
 {% endblock %}

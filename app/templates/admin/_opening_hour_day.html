@@ -1,28 +1,21 @@
-<div class="opening-hour-day" id="opening-hour-day-{{ weekday }}">
-  <div class="opening-hour-day-header">
-    <strong>{{ weekday_label }}</strong>
-    {% if not windows %}<span class="tag">Geschlossen</span>{% endif %}
-  </div>
-  <ul class="options">
+<div class="opening-hour-day hours-row" id="opening-hour-day-{{ weekday }}">
+  <strong class="hours-day">{{ weekday_label }}</strong>
+  <ul class="opt-chips hours-windows">
     {% for window in windows %}
-    <li>
-      {{ window.open_time }} – {{ window.close_time }}
-      <form method="post" action="/admin/settings/hours/windows/{{ window.id }}/delete"
-            hx-post="/admin/settings/hours/windows/{{ window.id }}/delete" hx-target="#opening-hour-day-{{ weekday }}"
-            hx-swap="outerHTML" class="inline">
-        <button type="submit" class="danger small">×</button>
-      </form>
+    <li>{{ window.open_time }} – {{ window.close_time }}
+      <button type="button" class="zip-x" aria-label="Zeitfenster entfernen"
+              hx-post="/admin/settings/hours/windows/{{ window.id }}/delete" hx-target="#opening-hour-day-{{ weekday }}" hx-swap="outerHTML">×</button>
     </li>
+    {% else %}
+    <li class="empty">Geschlossen</li>
     {% endfor %}
   </ul>
   <form method="post" action="/admin/settings/hours/{{ weekday }}/windows"
         hx-post="/admin/settings/hours/{{ weekday }}/windows" hx-target="#opening-hour-day-{{ weekday }}"
-        hx-swap="outerHTML" class="inline-form opening-hour-add-form">
-    <div class="opening-hour-times">
-      <input type="time" name="open_time" value="11:00" aria-label="Von">
-      <span class="opening-hour-sep">–</span>
-      <input type="time" name="close_time" value="22:00" aria-label="Bis">
-    </div>
-    <button type="submit">Speichern</button>
+        hx-swap="outerHTML" class="hours-add">
+    <input type="time" name="open_time" value="11:00" aria-label="Von">
+    <span class="opening-hour-sep">–</span>
+    <input type="time" name="close_time" value="22:00" aria-label="Bis">
+    <button type="submit" class="small">Hinzufügen</button>
   </form>
 </div>

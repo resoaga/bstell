@@ -4,63 +4,64 @@
 {% include "admin/_settings_nav.html" %}
 
 <section class="category">
-  <h2>Bestellannahme</h2>
-  <form method="post" action="/admin/settings/ordering">
-    <label class="checkbox-label">
-      <input type="checkbox" name="accepting_orders" value="true" {{ "checked" if settings.accepting_orders else "" }}>
-      Bestellungen werden angenommen
+  <form method="post" action="/admin/settings/ordering" class="fform">
+    <h2>Bestellannahme</h2>
+    <div class="check-row">
+      <label class="checkbox-label"><input type="checkbox" name="accepting_orders" value="true" {{ "checked" if settings.accepting_orders else "" }}> Bestellungen werden angenommen</label>
+      <label class="checkbox-label"><input type="checkbox" name="pickup_enabled" value="true" {{ "checked" if settings.pickup_enabled else "" }}> Abholung</label>
+      <label class="checkbox-label"><input type="checkbox" name="delivery_enabled" value="true" {{ "checked" if settings.delivery_enabled else "" }}> Lieferung</label>
+    </div>
+    <div class="fgrid">
+      <label>Mindestbestellwert (CHF)
+        <input type="number" step="0.05" min="0" name="minimum_order_value" value="{{ settings.minimum_order_value }}">
+      </label>
+      <label>Lieferkosten (CHF)
+        <input type="number" step="0.05" min="0" name="delivery_fee" value="{{ settings.delivery_fee }}">
+      </label>
+      <label>Vorbestellung (Min. vor Öffnung)
+        <input type="number" min="0" max="240" step="5" name="preorder_minutes" value="{{ settings.preorder_minutes }}">
+      </label>
+      <label>Max. Bestellungen / Kunde / Std.
+        <input type="number" name="order_limit_per_hour" min="1" max="50" value="{{ settings.order_limit_per_hour or 5 }}">
+      </label>
+      <label>Erledigte in Live-Ansicht (Anzahl)
+        <input type="number" name="orders_done_limit" min="0" max="30" value="{{ settings.orders_done_limit if settings.orders_done_limit is not none else 3 }}">
+      </label>
+    </div>
+    <details class="help"><summary>Erklärungen</summary>
+      <p><b>Bestellungen werden angenommen:</b> aus = Laden ist geschlossen, für alle Bestellwege.</p>
+      <p><b>Vorbestellung:</b> ab so vielen Minuten vor der Öffnung nimmt die Webseite schon Bestellungen an (bearbeitet ab Öffnung). Davor und nach Ladenschluss ist Bestellen gesperrt, die Seite zeigt Telefon und Öffnungszeit. 0 = nur zu den Öffnungszeiten.</p>
+      <p><b>Max. Bestellungen:</b> wer öfter bestellt, wird gebremst und sieht deine Telefonnummer. Pro Telefonnummer gilt dieser Wert, pro Gerät +2, pro Netzwerk das Doppelte (mindestens 10). Zum Testen kannst du ihn erhöhen.</p>
+      <p><b>Erledigte in Live-Ansicht:</b> so viele abgeschlossene oder stornierte Bestellungen der letzten 24 Stunden bleiben unter den offenen sichtbar. Ältere findest du unter Bestellungen → Verlauf.</p>
+    </details>
+
+    <h3>Servicegebühr</h3>
+    <div class="fgrid">
+      <label class="checkbox-label"><input type="checkbox" name="service_fee_enabled" value="true" {{ "checked" if settings.service_fee_enabled else "" }}> Servicegebühr erheben</label>
+      <label>Prozent vom Warenwert (%)
+        <input type="number" step="0.1" min="0" max="20" name="service_fee_percent"
+               value="{{ settings.service_fee_percent if settings.service_fee_mode != 'fixed' else 0 }}">
+      </label>
+      <label>plus fester Betrag (CHF)
+        <input type="number" step="0.05" min="0" max="50" name="service_fee_fixed"
+               value="{{ settings.service_fee_fixed if settings.service_fee_mode != 'percent' else 0 }}">
+      </label>
+      <label>Bezeichnung für den Kunden
+        <input type="text" name="service_fee_label" value="{{ settings.service_fee_label }}" maxlength="40">
+      </label>
+    </div>
+    <details class="help"><summary>Erklärungen</summary>
+      <p>Prozent und fester Betrag werden zusammengezählt, ein Feld darf 0 sein. Beispiel 2 % + 0.30: bei 30 CHF Warenwert sind das 0.60 + 0.30 = 0.90, gerundet auf 5 Rappen.</p>
+      <p>Die Gebühr steht als eigene Zeile im Warenkorb, an der Kasse und in der Bestätigung, bevor der Kunde bestellt. Sie gilt für Bar und Karte. Der Prozentsatz wird vom Warenwert ohne Lieferkosten gerechnet (max. 20 %), der feste Betrag max. 50 CHF. Es wird keine zusätzliche MwSt. berechnet, die Preise sind inkl. MwSt.</p>
+    </details>
+
+    <h3>Stornierungsgründe</h3>
+    <label>Ein Vorschlag pro Zeile
+      <textarea name="cancel_reasons" rows="4">{{ cancel_reasons_text }}</textarea>
     </label>
-    <p class="hint">Wenn deaktiviert, gilt das für alle Bestellwege — sozusagen "Laden ist geschlossen".</p>
-    <label class="checkbox-label">
-      <input type="checkbox" name="pickup_enabled" value="true" {{ "checked" if settings.pickup_enabled else "" }}>
-      Abholung möglich
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="delivery_enabled" value="true" {{ "checked" if settings.delivery_enabled else "" }}>
-      Lieferung möglich
-    </label>
-    <label>Vorbestellung: Minuten vor Öffnung
-      <input type="number" min="0" max="240" step="5" name="preorder_minutes" value="{{ settings.preorder_minutes }}">
-    </label>
-    <p class="hint">Ab so vielen Minuten vor der Öffnung nimmt die Webseite schon Bestellungen an (sie werden ab Öffnung bearbeitet). Davor und nach Ladenschluss ist Bestellen gesperrt, die Seite zeigt Telefon und Öffnungszeit. 0 = nur zu den Öffnungszeiten.</p>
-    <label>Stornierungsgründe (ein Vorschlag pro Zeile)
-      <textarea name="cancel_reasons" rows="7">{{ cancel_reasons_text }}</textarea>
-    </label>
-    <p class="hint">So sieht die Liste aktuell aus. Du kannst Zeilen ändern, löschen oder neue hinzufügen. Diese Texte wählst du im Admin beim Stornieren mit einem Tipp, der Kunde sieht den Grund und bekommt ihn per E-Mail. Alles löschen und speichern = Standardliste.</p>
-    <label>Max. Bestellungen pro Kunde und Stunde (Schutz vor Missbrauch)
-      <input type="number" name="order_limit_per_hour" min="1" max="50" value="{{ settings.order_limit_per_hour or 5 }}">
-    </label>
-    <p class="hint">Wer öfter bestellt, wird gebremst und sieht deine Telefonnummer. Pro Telefonnummer gilt dieser Wert, pro Gerät +2, pro Netzwerk das Doppelte (mindestens 10). Zum Testen kannst du ihn erhöhen.</p>
-    <label>Erledigte Bestellungen in der Live-Ansicht (Anzahl)
-      <input type="number" name="orders_done_limit" min="0" max="30" value="{{ settings.orders_done_limit if settings.orders_done_limit is not none else 3 }}">
-    </label>
-    <p class="hint">So viele abgeschlossene oder stornierte Bestellungen der letzten 24 Stunden bleiben unter den offenen sichtbar. Alle älteren findest du unter Bestellungen → Verlauf.</p>
-    <label>Mindestbestellwert (CHF)
-      <input type="number" step="0.05" min="0" name="minimum_order_value" value="{{ settings.minimum_order_value }}">
-    </label>
-    <label>Lieferkosten (CHF)
-      <input type="number" step="0.05" min="0" name="delivery_fee" value="{{ settings.delivery_fee }}">
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="service_fee_enabled" value="true" {{ "checked" if settings.service_fee_enabled else "" }}>
-      Servicegebühr auf den Warenwert erheben
-    </label>
-    <label>Prozent vom Warenwert (%)
-      <input type="number" step="0.1" min="0" max="20" name="service_fee_percent"
-             value="{{ settings.service_fee_percent if settings.service_fee_mode != 'fixed' else 0 }}">
-    </label>
-    <label>plus fester Betrag pro Bestellung (CHF)
-      <input type="number" step="0.05" min="0" max="50" name="service_fee_fixed"
-             value="{{ settings.service_fee_fixed if settings.service_fee_mode != 'percent' else 0 }}">
-    </label>
-    <p class="hint">Beides wird zusammengezählt, ein Feld darf 0 sein. Beispiel 2 % + 0.30: bei 30 CHF Warenwert sind das 0.60 + 0.30 = 0.90, gerundet auf 5 Rappen.</p>
-    <label>Bezeichnung für den Kunden
-      <input type="text" name="service_fee_label" value="{{ settings.service_fee_label }}" maxlength="40">
-    </label>
-    <p class="hint">
-      Wird als eigene Zeile im Warenkorb, an der Kasse und in der Bestätigung gezeigt, bevor der Kunde bestellt.
-      Gilt für alle Bestellungen (Bar und Karte). Der Prozentsatz wird vom Warenwert ohne Lieferkosten gerechnet (max. 20 %), der feste Betrag max. 50 CHF. Es wird keine zusätzliche MwSt. berechnet, die Preise sind inkl. MwSt.
-    </p>
+    <details class="help"><summary>Erklärungen</summary>
+      <p>Diese Texte wählst du beim Stornieren mit einem Tipp. Der Kunde sieht den Grund und bekommt ihn per E-Mail. Alles löschen und speichern = Standardliste.</p>
+    </details>
     <button type="submit">Speichern</button>
   </form>
 </section>
