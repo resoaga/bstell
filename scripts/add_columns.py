@@ -24,6 +24,8 @@ COLUMNS = [
     ("restaurant_settings", "cancel_reasons", "TEXT DEFAULT ''"),
     ("restaurant_settings", "order_limit_per_hour", "INTEGER DEFAULT 5"),
     ("restaurant_settings", "orders_done_limit", "INTEGER DEFAULT 3"),
+    ("restaurant_settings", "order_override", "VARCHAR DEFAULT ''"),
+    ("restaurant_settings", "order_override_base", "VARCHAR DEFAULT ''"),
     ("orders", "service_fee_text", "VARCHAR DEFAULT ''"),
     ("orders", "cancel_reason", "VARCHAR DEFAULT ''"),
     ("restaurant_settings", "attach_receipt_pdf", "BOOLEAN NOT NULL DEFAULT 0"),

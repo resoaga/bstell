@@ -264,6 +264,10 @@ class RestaurantSettings(Base):
     email = Column(String, default="")
 
     accepting_orders = Column(Boolean, default=True)
+    # Manual switch on the dashboard: "" = follow opening hours, "open" / "closed" = forced. It lapses
+    # as soon as the opening hours change state (order_override_base = state when it was set).
+    order_override = Column(String, default="")
+    order_override_base = Column(String, default="")
     pickup_enabled = Column(Boolean, default=True)
     delivery_enabled = Column(Boolean, default=True)
     # Pre-orders: how many minutes before opening the shop already takes orders

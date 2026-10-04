@@ -37,6 +37,7 @@ from ..repo import (
     get_opening_hours_by_weekday,
     get_settings,
     is_currently_open,
+    effective_shop,
     shop_status,
 )
 
@@ -82,7 +83,7 @@ def _restaurant_schema_json(settings, hours_by_weekday: dict) -> str:
 
 def closed_message(settings, shop: dict) -> str:
     """Why ordering is not possible right now (shop closed, outside pre-order window)."""
-    if not settings.accepting_orders:
+    if shop.get("paused"):
         return "Wir nehmen aktuell keine Bestellungen an."
     when = f" Wir öffnen {shop['opens_text']}." if shop["opens_text"] else ""
     contact = f" Für frühere Bestellungen bitte anrufen: {settings.phone}." if settings.phone else ""
@@ -118,7 +119,7 @@ def site_extra(request: Request, db: Session) -> dict:
     identity = cust.read_identity(request)
     my_orders = cust.orders_for_identity(db, identity, limit=5)
     cart_fee = cart_lib.service_fee_for(settings, cart_total)
-    shop = shop_status(hours_by_weekday, settings.preorder_minutes)
+    shop = effective_shop(settings, hours_by_weekday)
     base_url = cust.public_base_url(request)
     removed = [] if request.headers.get("HX-Request") else request.session.pop("cart_removed", [])
     return {
@@ -126,7 +127,7 @@ def site_extra(request: Request, db: Session) -> dict:
         "canonical_url": base_url + request.url.path,
         "cart_removed": removed,
         "shop": shop,
-        "can_order": bool(settings.accepting_orders and shop["state"] in ("open", "preorder")),
+        "can_order": shop["can_order"],
         "service_fee": cart_fee,
         "service_fee_text": cart_lib.service_fee_text(settings),
         "cart_total_with_fee": cart_total + cart_fee,
@@ -397,8 +398,8 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
             status_code=400,
         )
 
-    shop = shop_status(get_opening_hours_by_weekday(db), settings.preorder_minutes)
-    if not settings.accepting_orders or shop["state"] == "closed":
+    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    if not shop["can_order"]:
         return error_response(closed_message(settings, shop))
     if not lines:
         return error_response("Der Warenkorb ist leer.")

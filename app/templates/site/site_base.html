@@ -43,7 +43,7 @@
   </a>
   {% endif %}
 
-  {% set shop_state = "paused" if (not settings.accepting_orders and shop.state != "closed") else ("closed" if shop.state == "closed" else ("preorder" if shop.state == "preorder" else "open")) %}
+  {% set shop_state = "paused" if (shop.paused and shop.state != "closed") else ("closed" if shop.state == "closed" else ("preorder" if shop.state == "preorder" else "open")) %}
   <div class="status-strip">
     <span class="status-pill status-{{ shop_state }}">
       {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "preorder" %}Vorbestellung möglich · öffnet {{ shop.opens_text }}{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% if shop.opens_text %} · öffnet {{ shop.opens_text }}{% endif %}{% endif %}

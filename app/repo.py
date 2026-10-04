@@ -25,6 +25,23 @@ def is_currently_open(hours_by_weekday: dict) -> bool:
     return False
 
 
+def effective_shop(settings, hours_by_weekday: dict) -> dict:
+    """shop_status plus the manual dashboard switch. can_order: customers may order right now.
+    paused: shop is shut by hand / by the master switch (not just outside hours)."""
+    shop = shop_status(hours_by_weekday, settings.preorder_minutes)
+    base = "closed" if shop["state"] == "closed" else "open"
+    override = settings.order_override if settings.order_override_base == base else ""
+    if override == "open":
+        shop = {"state": "open", "opens_text": ""}
+        shop["paused"], shop["can_order"] = False, True
+    elif override == "closed":
+        shop["paused"], shop["can_order"] = True, False
+    else:
+        shop["paused"] = not settings.accepting_orders
+        shop["can_order"] = bool(settings.accepting_orders and shop["state"] in ("open", "preorder"))
+    return shop
+
+
 def shop_status(hours_by_weekday: dict, preorder_minutes: int, now: datetime = None) -> dict:
     """state: open | preorder (within preorder_minutes before opening) | closed.
     opens_text says when the shop opens next ("12:00", "morgen 11:00", "Mo 11:00")."""

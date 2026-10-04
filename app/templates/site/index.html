@@ -61,7 +61,7 @@
 <input type="search" id="menu-search" class="menu-search" placeholder="Gericht suchen …" aria-label="Gericht suchen">
 
 {% if not can_order %}
-<p class="notice">{% if not settings.accepting_orders %}Wir nehmen aktuell keine Bestellungen an.{% else %}Wir haben geschlossen{% if shop.opens_text %} und öffnen {{ shop.opens_text }}{% endif %}. Bestellen ist {{ settings.preorder_minutes or 0 }} Minuten vor Öffnung möglich.{% if settings.phone %} Früher? Bitte anrufen: <a class="text-link" href="tel:{{ settings.phone | replace(' ', '') }}">{{ settings.phone }}</a>{% endif %}{% endif %}</p>
+<p class="notice">{% if shop.paused %}Wir nehmen aktuell keine Bestellungen an.{% else %}Wir haben geschlossen{% if shop.opens_text %} und öffnen {{ shop.opens_text }}{% endif %}. Bestellen ist {{ settings.preorder_minutes or 0 }} Minuten vor Öffnung möglich.{% if settings.phone %} Früher? Bitte anrufen: <a class="text-link" href="tel:{{ settings.phone | replace(' ', '') }}">{{ settings.phone }}</a>{% endif %}{% endif %}</p>
 {% elif shop.state == "preorder" %}
 <p class="notice ok">Vorbestellung: Wir öffnen um {{ shop.opens_text }}. Deine Bestellung wird ab dann zubereitet und geliefert.</p>
 {% endif %}

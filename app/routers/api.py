@@ -37,6 +37,7 @@ def get_delivery_status(db: Session = Depends(get_db)):
 def set_delivery_status(payload: DeliveryStatusIn, db: Session = Depends(get_db)):
     settings = get_settings(db)
     settings.accepting_orders = payload.enabled
+    settings.order_override = ""
     db.commit()
     return {"accepting_orders": settings.accepting_orders}
 

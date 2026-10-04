@@ -40,7 +40,7 @@ from ..models import (
     OrderStatus,
     SelectionType,
 )
-from ..repo import get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
+from ..repo import effective_shop, get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
 
 UPLOAD_DIR = "app/static/uploads"
 
@@ -195,27 +195,42 @@ WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 
 QUICK_SWITCHES = [
-    ("accepting_orders", "Bestellungen annehmen", "Aus = Laden ist zu"),
-    ("delivery_enabled", "Lieferung", "Aus = nur Abholung"),
-    ("pickup_enabled", "Abholung", "Aus = nur Lieferung"),
+    ("accepting_orders", "Bestellungen"),
+    ("delivery_enabled", "Lieferung"),
+    ("pickup_enabled", "Abholung"),
 ]
 
 
 def _switches_response(request: Request, db: Session):
     settings = get_settings(db)
-    rows = [(key, label, hint, bool(getattr(settings, key))) for key, label, hint in QUICK_SWITCHES]
-    return templates.TemplateResponse("admin/_quick_switches.html", {"request": request, "rows": rows})
+    return templates.TemplateResponse("admin/_quick_switches.html", {"request": request, "rows": _switch_rows(db)})
+
+
+def _switch_rows(db: Session) -> list:
+    settings = get_settings(db)
+    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    return [
+        (key, label, shop["can_order"] if key == "accepting_orders" else bool(getattr(settings, key)))
+        for key, label in QUICK_SWITCHES
+    ]
 
 
 @router.post("/quick/{field}", dependencies=mutating)
 def quick_switch(field: str, request: Request, db: Session = Depends(get_db)):
     """One-tap on/off for the website (dashboard switches)."""
-    names = {key: label for key, label, _ in QUICK_SWITCHES}
+    names = dict(QUICK_SWITCHES)
     if field not in names:
         raise HTTPException(status_code=404, detail="Unbekannter Schalter")
     settings = get_settings(db)
-    new_value = not getattr(settings, field)
-    setattr(settings, field, new_value)
+    if field == "accepting_orders":
+        # Overrides the opening hours until they change state (opening / closing time)
+        shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+        new_value = not shop["can_order"]
+        settings.order_override = "open" if new_value else "closed"
+        settings.order_override_base = "closed" if shop["state"] == "closed" else "open"
+    else:
+        new_value = not getattr(settings, field)
+        setattr(settings, field, new_value)
     db.commit()
     audit.note(request, f"{names[field]}: {'an' if new_value else 'aus'}")
     return _switches_response(request, db)
@@ -275,7 +290,7 @@ def dashboard(request: Request, p: str = "7", db: Session = Depends(get_db)):
         {
             "request": request,
             "p": p,
-            "rows": [(k, l, h, bool(getattr(get_settings(db), k))) for k, l, h in QUICK_SWITCHES],
+            "rows": _switch_rows(db),
             "periods": {k: v[0] for k, v in DASH_PERIODS.items()},
             "total": total,
             "cancelled": cancelled,
@@ -1130,6 +1145,7 @@ def update_ordering_settings(
     settings.service_fee_mode = "mixed" if (percent and fixed) else ("fixed" if fixed else "percent")
     settings.service_fee_label = service_fee_label.strip() or "Servicegebühr"
     settings.accepting_orders = accepting_orders
+    settings.order_override = ""
     settings.pickup_enabled = pickup_enabled
     settings.delivery_enabled = delivery_enabled
     settings.minimum_order_value = minimum_order_value
