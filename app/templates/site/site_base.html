@@ -46,7 +46,7 @@
   {% set shop_state = "paused" if (shop.paused and shop.state != "closed") else ("closed" if shop.state == "closed" else ("preorder" if shop.state == "preorder" else "open")) %}
   <div class="status-strip">
     <span class="status-pill status-{{ shop_state }}">
-      {% if shop_state == "open" %}Bereit für Lieferung{% elif shop_state == "preorder" %}Vorbestellung möglich · öffnet {{ shop.opens_text }}{% elif shop_state == "paused" %}Aktuell nicht lieferbar{% else %}Geschlossen{% if shop.opens_text %} · öffnet {{ shop.opens_text }}{% endif %}{% endif %}
+      {% if shop_state == "open" %}{% if settings.pickup_enabled and settings.delivery_enabled %}Bereit für Lieferung und Abholung{% elif settings.pickup_enabled %}Nur Abholung möglich{% else %}Nur Lieferung möglich{% endif %}{% elif shop_state == "preorder" %}Vorbestellung möglich · öffnet {{ shop.opens_text }}{% elif shop_state == "paused" %}Aktuell keine Bestellungen{% else %}Geschlossen{% if shop.opens_text %} · öffnet {{ shop.opens_text }}{% endif %}{% endif %}
     </span>
     {% if settings.address_street %}
     {% set maps_url = "https://www.google.com/maps/search/?api=1&query=" ~ ((settings.address_street ~ ", " ~ settings.address_zip ~ " " ~ settings.address_city) | urlencode) %}

@@ -39,6 +39,8 @@ def effective_shop(settings, hours_by_weekday: dict) -> dict:
     else:
         shop["paused"] = not settings.accepting_orders
         shop["can_order"] = bool(settings.accepting_orders and shop["state"] in ("open", "preorder"))
+    if not (settings.pickup_enabled or settings.delivery_enabled):
+        shop["paused"], shop["can_order"] = True, False
     return shop
 
 

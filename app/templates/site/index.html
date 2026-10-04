@@ -65,6 +65,9 @@
 {% elif shop.state == "preorder" %}
 <p class="notice ok">Vorbestellung: Wir öffnen um {{ shop.opens_text }}. Deine Bestellung wird ab dann zubereitet und geliefert.</p>
 {% endif %}
+{% if can_order and settings.pickup_enabled != settings.delivery_enabled %}
+<p class="notice">{% if settings.pickup_enabled %}Aktuell nur Abholung möglich. Lieferung ist momentan nicht verfügbar.{% else %}Aktuell nur Lieferung möglich. Abholung ist momentan nicht verfügbar.{% endif %}</p>
+{% endif %}
 
 <nav class="category-pills" id="menu-top">
   <a class="category-pill" href="#menu-top">Alle</a>

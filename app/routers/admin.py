@@ -202,37 +202,53 @@ QUICK_SWITCHES = [
 
 
 def _switches_response(request: Request, db: Session):
-    settings = get_settings(db)
     return templates.TemplateResponse("admin/_quick_switches.html", {"request": request, "rows": _switch_rows(db)})
 
 
 def _switch_rows(db: Session) -> list:
+    """Shown green only while customers can really order that way right now."""
     settings = get_settings(db)
-    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    live = effective_shop(settings, get_opening_hours_by_weekday(db))["can_order"]
     return [
-        (key, label, shop["can_order"] if key == "accepting_orders" else bool(getattr(settings, key)))
-        for key, label in QUICK_SWITCHES
+        ("accepting_orders", "Bestellungen", live),
+        ("delivery_enabled", "Lieferung", live and bool(settings.delivery_enabled)),
+        ("pickup_enabled", "Abholung", live and bool(settings.pickup_enabled)),
     ]
+
+
+def _force_orders(settings, shop: dict, open_: bool) -> None:
+    """Manual override of the opening hours until they change state (opening / closing time)."""
+    settings.order_override = "open" if open_ else "closed"
+    settings.order_override_base = "closed" if shop["state"] == "closed" else "open"
 
 
 @router.post("/quick/{field}", dependencies=mutating)
 def quick_switch(field: str, request: Request, db: Session = Depends(get_db)):
-    """One-tap on/off for the website (dashboard switches)."""
-    names = dict(QUICK_SWITCHES)
-    if field not in names:
+    """One-tap on/off for the website. Bestellungen is the master: off turns everything off,
+    on turns both ways on; Lieferung / Abholung switch alone and wake or stop the master."""
+    if field not in dict(QUICK_SWITCHES):
         raise HTTPException(status_code=404, detail="Unbekannter Schalter")
     settings = get_settings(db)
+    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    live = shop["can_order"]
     if field == "accepting_orders":
-        # Overrides the opening hours until they change state (opening / closing time)
-        shop = effective_shop(settings, get_opening_hours_by_weekday(db))
-        new_value = not shop["can_order"]
-        settings.order_override = "open" if new_value else "closed"
-        settings.order_override_base = "closed" if shop["state"] == "closed" else "open"
+        turn_on = not live
+        settings.pickup_enabled = settings.delivery_enabled = turn_on
+        _force_orders(settings, shop, turn_on)
+        text = "Bestellungen: " + ("an (Lieferung + Abholung)" if turn_on else "aus (alles aus)")
     else:
-        new_value = not getattr(settings, field)
-        setattr(settings, field, new_value)
+        other = "pickup_enabled" if field == "delivery_enabled" else "delivery_enabled"
+        turn_on = not (live and getattr(settings, field))
+        if turn_on and not live:
+            setattr(settings, other, False)  # waking the shop with one way only
+        setattr(settings, field, turn_on)
+        if turn_on:
+            _force_orders(settings, shop, True)
+        elif not getattr(settings, other):
+            _force_orders(settings, shop, False)
+        text = f"{dict(QUICK_SWITCHES)[field]}: {'an' if turn_on else 'aus'}"
     db.commit()
-    audit.note(request, f"{names[field]}: {'an' if new_value else 'aus'}")
+    audit.note(request, text)
     return _switches_response(request, db)
 
 
