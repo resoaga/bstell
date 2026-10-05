@@ -436,3 +436,17 @@ class DeliveryZone(Base):
     @property
     def zip_list(self) -> list:
         return sorted({z for z in self.zips.replace(",", " ").split() if z})
+
+
+class AdminUser(Base):
+    """Admin login stored in the database. Role "admin" sees everything, "kitchen" only
+    overview, orders, items and options (no settings). The ADMIN_USERNAME / ADMIN_PASSWORD
+    environment login keeps working until a row with that username exists."""
+
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String, nullable=False, unique=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="admin")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

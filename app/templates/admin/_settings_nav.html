@@ -1,7 +1,6 @@
 <nav class="settings-nav" aria-label="Einstellungen">
-  {% set ns = namespace(group=None) %}
-  {% for slug, label, group in settings_tabs %}
-    {% if group != ns.group %}{% if ns.group is not none %}</div>{% endif %}<div class="settings-group">{% set ns.group = group %}{% endif %}
+  <div class="settings-group">
+  {% for slug, label, sections in settings_tabs %}
     <a class="settings-tab {{ 'active' if slug == active_settings_tab else '' }}" href="/admin/settings/{{ slug }}">{{ label }}</a>
   {% endfor %}
   </div>

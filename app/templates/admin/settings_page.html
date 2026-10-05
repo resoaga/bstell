@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ tab_label }} – Admin{% endblock %}
+{% block content %}
+<div class="page-head"><h2>Einstellungen</h2></div>
+{% include "admin/_settings_nav.html" %}
+{% for slug, body in sections %}
+<div class="settings-section" id="{{ slug }}">{{ body }}</div>
+{% endfor %}
+{% endblock %}

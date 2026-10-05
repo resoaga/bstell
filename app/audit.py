@@ -43,6 +43,11 @@ ACTIONS = [
     (r"^/settings/email/test$", "Test-Mail gesendet"),
     (r"^/settings/email$", "E-Mail-Einstellungen geändert"),
     (r"^/settings/hours", "Öffnungszeiten geändert"),
+    (r"^/settings/users/new$", "Benutzer angelegt"),
+    (r"^/settings/users/my-password$", "Eigenes Passwort geändert"),
+    (r"^/settings/users/\d+/password$", "Passwort eines Benutzers geändert"),
+    (r"^/settings/users/\d+/role$", "Rolle eines Benutzers geändert"),
+    (r"^/settings/users/\d+/delete$", "Benutzer gelöscht"),
 ]
 COMPILED = [(re.compile(p), label) for p, label in ACTIONS]
 

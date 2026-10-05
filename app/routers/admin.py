@@ -11,6 +11,7 @@ from urllib.parse import quote_plus
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from markupsafe import Markup
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -168,20 +169,18 @@ ORDER_TEMPLATE_EXTRAS = {
 }
 
 
+# (slug, label, sections). Every section keeps its own template and view function; a tab page
+# renders its sections one below the other. Hidden tabs have no entry in the navigation.
 SETTINGS_TABS = [
-    ("general", "Stammdaten", "Betrieb"),
-    ("hours", "Öffnungszeiten", "Betrieb"),
-    ("times", "Bestellzeiten", "Betrieb"),
-    ("delivery-zone", "Liefergebiet", "Betrieb"),
-    ("ordering", "Bestellannahme", "Bestellung"),
-    ("payment", "Zahlung", "Bestellung"),
-    ("email", "E-Mail", "Bestellung"),
-    ("website", "Webseite", "Inhalt"),
-    ("legal", "Rechtliches", "Inhalt"),
-    ("customers", "Kunden", "Kunden"),
-    ("security", "Sicherheit", "System"),
-    ("audit", "Protokoll", "System"),
+    ("betrieb", "Betrieb", ["general", "hours"]),
+    ("bestellung", "Bestellung", ["ordering", "times", "delivery-zone", "payment"]),
+    ("mitteilungen", "Benachrichtigung", ["email"]),
+    ("legal", "Rechtliches", ["legal"]),
+    ("customers", "Kunden", ["customers"]),
+    ("benutzer", "Benutzer", ["users"]),
+    ("system", "System", ["security", "audit"]),
 ]
+HIDDEN_SETTINGS_TABS = [("website", "Webseite", ["website"])]
 
 
 def settings_context(active_tab: str, db: Session) -> dict:
@@ -756,7 +755,6 @@ def link_requests():
     return RedirectResponse(url="/admin/settings/security", status_code=303)
 
 
-@router.get("/settings/security")
 def settings_security(request: Request, db: Session = Depends(get_db)):
     entries = db.query(LoginLink).order_by(LoginLink.created_at.desc()).limit(200).all()
     return templates.TemplateResponse(
@@ -765,7 +763,6 @@ def settings_security(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/settings/audit")
 def settings_audit(request: Request, q: str = "", page: int = 1, db: Session = Depends(get_db)):
     per_page = 50
     query = db.query(AuditLog)
@@ -974,10 +971,9 @@ def cancel_order(
 
 @router.get("/settings")
 def settings_index():
-    return RedirectResponse(url="/admin/settings/general")
+    return RedirectResponse(url="/admin/settings/betrieb")
 
 
-@router.get("/settings/general")
 def settings_general(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_general.html", {"request": request, **settings_context("general", db)}
@@ -1012,7 +1008,6 @@ async def update_general_settings(
     return RedirectResponse(url="/admin/settings/general", status_code=303)
 
 
-@router.get("/settings/website")
 def settings_website(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_website.html",
@@ -1061,7 +1056,6 @@ async def update_website_settings(
     return RedirectResponse(url="/admin/settings/website", status_code=303)
 
 
-@router.get("/settings/legal")
 def settings_legal(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_legal.html",
@@ -1091,7 +1085,6 @@ def _valid_time(value: str) -> bool:
     return bool(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value or ""))
 
 
-@router.get("/settings/times")
 def settings_times(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_times.html",
@@ -1147,7 +1140,6 @@ def delete_time_rule(rule_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/admin/settings/times", status_code=303)
 
 
-@router.get("/settings/ordering")
 def settings_ordering(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_ordering.html",
@@ -1195,7 +1187,6 @@ def regenerate_freiwirt_token(db: Session = Depends(get_db)):
     return RedirectResponse(url="/admin/settings/ordering", status_code=303)
 
 
-@router.get("/settings/delivery-zone")
 def settings_delivery_zone(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_delivery_zone.html",
@@ -1308,7 +1299,6 @@ def delete_zone(zone_id: int, request: Request, db: Session = Depends(get_db)):
     return _zones_back()
 
 
-@router.get("/settings/payment")
 def settings_payment(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_payment.html",
@@ -1343,7 +1333,6 @@ def send_test_mail(to: str = Form(""), db: Session = Depends(get_db)):
     return RedirectResponse(url=f"/admin/settings/email?test={'ok' if ok else 'failed'}&err={quote(error)}", status_code=303)
 
 
-@router.get("/settings/email")
 def settings_email(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_email.html",
@@ -1388,7 +1377,6 @@ def _phone_key(phone: str, email: str = "") -> str:
     return digits or (email or "").strip().lower()
 
 
-@router.get("/settings/customers")
 def settings_customers(request: Request, db: Session = Depends(get_db)):
     orders = db.query(Order).filter(Order.status != OrderStatus.awaiting_payment).order_by(Order.created_at.desc()).all()
     customers = {}
@@ -1423,7 +1411,6 @@ def settings_customers(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/settings/hours")
 def settings_hours(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "admin/settings_hours.html",
@@ -1488,3 +1475,58 @@ def delete_opening_hour_window(window_id: int, request: Request, db: Session = D
             "windows": get_opening_hours_by_weekday(db)[weekday],
         },
     )
+
+
+# ---- Einstellungen: Reiter aus mehreren Abschnitten ----
+
+def _section_views() -> dict:
+    return {
+        "general": settings_general, "hours": settings_hours, "times": settings_times,
+        "ordering": settings_ordering, "delivery-zone": settings_delivery_zone,
+        "payment": settings_payment, "email": settings_email, "website": settings_website,
+        "legal": settings_legal, "customers": settings_customers,
+        "security": settings_security, "audit": settings_audit,
+        **EXTRA_SECTION_VIEWS,
+    }
+
+
+# Filled by the later settings modules (users, statistics, ...): slug -> view function
+EXTRA_SECTION_VIEWS: dict = {}
+
+
+def _render_tab(request: Request, db: Session, tab) -> HTMLResponse:
+    slug, label, sections = tab
+    views = _section_views()
+    params = request.query_params
+    html = []
+    for sec in sections:
+        view = views[sec]
+        kwargs = {}
+        if sec == "audit":
+            kwargs = {"q": params.get("q", ""), "page": int(params["page"]) if params.get("page", "").isdigit() else 1}
+        resp = view(request=request, db=db, **kwargs)
+        html.append((sec, Markup(resp.template.render(**resp.context))))
+    return templates.TemplateResponse(
+        "admin/settings_page.html",
+        {"request": request, "sections": html, "tab_label": label, **settings_context(slug, db)},
+    )
+
+
+def _register_settings_routes():
+    for tab in SETTINGS_TABS + HIDDEN_SETTINGS_TABS:
+        def view(request: Request, db: Session = Depends(get_db), _tab=tab):
+            return _render_tab(request, db, _tab)
+        router.add_api_route(f"/settings/{tab[0]}", view, methods=["GET"])
+        for sec in tab[2]:
+            if sec == tab[0]:
+                continue
+            def old(request: Request, _tab=tab[0], _sec=sec):
+                query = ("?" + request.url.query) if request.url.query else ""
+                return RedirectResponse(url=f"/admin/settings/{_tab}{query}#{_sec}", status_code=303)
+            router.add_api_route(f"/settings/{sec}", old, methods=["GET"])
+
+
+from . import admin_users  # noqa: E402
+
+admin_users.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
+_register_settings_routes()
