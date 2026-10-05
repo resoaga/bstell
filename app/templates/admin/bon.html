@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Bon #{{ order.id }}</title>
+<style>
+  @page { size: 80mm auto; margin: 3mm; }
+  body { font: 13px/1.3 "DejaVu Sans Mono", monospace; width: 72mm; margin: 0 auto; color: #000; }
+  h1 { font-size: 20px; margin: 0 0 2px; text-align: center; }
+  .c { text-align: center; } .big { font-size: 16px; font-weight: bold; }
+  hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+  .row { display: flex; justify-content: space-between; gap: 6px; }
+  .item { margin: 3px 0; } .item small { display: block; padding-left: 14px; font-size: 11px; }
+  .note { border: 2px solid #000; padding: 3px; margin: 6px 0; font-weight: bold; }
+  .noprint { margin: 10px 0; text-align: center; }
+  @media print { .noprint { display: none; } }
+</style>
+</head>
+<body onload="window.print()">
+{% set delivery = order.order_type.value == "delivery" %}
+<h1>{{ settings.name or "Bestellung" }}</h1>
+<div class="c big">#{{ order.id }} · {{ "LIEFERUNG" if delivery else "ABHOLUNG" }}</div>
+<div class="c">{{ order.created_at|localtime("%d.%m.%Y %H:%M") }}</div>
+<hr>
+<div><strong>{{ order.customer_name }}</strong></div>
+<div>{{ order.phone }}</div>
+{% if delivery and order.delivery_address %}<div>{{ order.delivery_address }}<br>{{ order.customer_zip }} {{ order.customer_city }}</div>{% endif %}
+<hr>
+{% for line in order.items %}
+<div class="item"><div class="row"><span><strong>{{ line.quantity }}×</strong> {{ line.item_name }}</span><span>{{ "%.2f"|format(line.unit_price * line.quantity) }}</span></div>
+{% if line.options_summary %}<small>{{ line.options_summary }}</small>{% endif %}</div>
+{% endfor %}
+{% if order.note %}<div class="note">⚠ {{ order.note }}</div>{% endif %}
+<hr>
+{% if order.service_fee or order.delivery_fee_paid %}
+<div class="row"><span>Waren</span><span>{{ "%.2f"|format(order.goods_total) }}</span></div>
+{% if order.delivery_fee_paid %}<div class="row"><span>Lieferung</span><span>{{ "%.2f"|format(order.delivery_fee_paid) }}</span></div>{% endif %}
+{% if order.service_fee %}<div class="row"><span>{{ order.service_fee_text or "Servicegebühr" }}</span><span>{{ "%.2f"|format(order.service_fee) }}</span></div>{% endif %}
+{% endif %}
+<div class="row big"><span>TOTAL CHF</span><span>{{ "%.2f"|format(order.total) }}</span></div>
+<div class="c">{% if order.payment_method == "online" %}ONLINE BEZAHLT{% elif order.payment_method == "card" %}Zahlung: Karte / Twint bei Übergabe{% else %}Zahlung: BAR bei Übergabe{% endif %}</div>
+<div class="noprint"><button onclick="window.print()">Drucken</button> <button onclick="window.close()">Schliessen</button></div>
+</body>
+</html>

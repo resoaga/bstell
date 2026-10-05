@@ -38,6 +38,7 @@
       {% if order.service_fee or order.delivery_fee_paid %}<small>Waren {{ "%.2f"|format(order.goods_total) }}{% if order.delivery_fee_paid %} · Lieferung {{ "%.2f"|format(order.delivery_fee_paid) }}{% endif %}{% if order.service_fee %} · Service {{ "%.2f"|format(order.service_fee) }}{% endif %}</small>{% endif %}
       <strong>CHF {{ "%.2f"|format(order.total) }}</strong>
       <span class="ord-tools">
+        <a href="/admin/orders/{{ order.id }}/bon" target="_blank" rel="noopener">Bon drucken</a>
         <a href="/verfolgen/{{ order.tracking_token }}/beleg.pdf" target="_blank" rel="noopener">Beleg (PDF)</a>
         {% if order.email %}<button type="button" class="linkish" hx-post="/admin/orders/{{ order.id }}/resend" hx-swap="none"
           data-confirm="Beleg erneut an {{ order.email }} senden?" data-confirm-label="Senden" data-confirm-style="plain">Per Mail senden</button>{% endif %}

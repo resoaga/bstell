@@ -909,6 +909,15 @@ def orders_badge(db: Session = Depends(get_db)):
     return HTMLResponse(f'<span class="nav-badge">{count}</span>' if count else "")
 
 
+@router.get("/orders/{order_id}/bon")
+def order_bon(order_id: int, request: Request, db: Session = Depends(get_db)):
+    """Printable slip (80 mm receipt printer layout) - fallback if the kitchen app is down."""
+    order = db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    return templates.TemplateResponse("admin/bon.html", {"request": request, "order": order, "settings": get_settings(db)})
+
+
 @router.post("/orders/{order_id}/advance", dependencies=mutating)
 def advance_order(order_id: int, request: Request, db: Session = Depends(get_db)):
     order = db.get(Order, order_id)
