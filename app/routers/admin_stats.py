@@ -12,6 +12,12 @@ from ..database import get_db
 from ..models import PAYMENT_LABELS
 from ..repo import get_settings
 
+def _csv_safe(value) -> str:
+    """Excel treats cells starting with = + - @ as formulas: customer input must not run as one."""
+    text = "" if value is None else str(value)
+    return "'" + text if text and text[0] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
 STAT_CHIPS = ["today", "7", "30", "month", "lastmonth", "year", "all"]
 FIGURE_CHIPS = ["month", "lastmonth", "quarter", "lastquarter", "year", "lastyear"]
 
@@ -107,12 +113,12 @@ def setup(router, templates, mutating, views):
         w.writerow(["Nr", "Datum", "Zeit", "Art", "Zahlung", "Status", "PLZ", "Warenwert", "Lieferung", "Service", "Total"])
         for o in orders:
             local = stats.timeutil.to_local(o.created_at)
-            w.writerow([
+            w.writerow([_csv_safe(x) for x in [
                 o.id, local.strftime("%d.%m.%Y"), local.strftime("%H:%M"),
                 "Lieferung" if o.order_type.value == "delivery" else "Abholung",
                 PAYMENT_LABELS.get(o.payment_method, o.payment_method), o.status.value, o.customer_zip or "",
                 f"{o.goods_total:.2f}", f"{o.delivery_fee_paid:.2f}", f"{(o.service_fee or 0):.2f}", f"{o.total:.2f}",
-            ])
+            ]])
         name = f"bestellungen_{first.isoformat()}_{last.isoformat()}.csv"
         return Response(
             "\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
