@@ -484,3 +484,8 @@ section.category > form.zone-head { display: flex; flex-wrap: wrap; gap: 8px 10p
 
 .new-btn.is-hot { background: #fde6d6; color: #a83e00; border-color: #f2b88f; }
 .top-tag { margin-left: 4px; padding: 1px 7px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; vertical-align: middle; }
+
+.sound-test { min-height: 30px; padding: 0 10px; font-size: 13px; background: #fff; color: var(--muted); border: 1px solid #cfccc3; border-radius: 8px; }
+.plain-list { list-style: none; padding: 0; margin: 0 0 12px; }
+.plain-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #eceae3; }
+.settings-section + .settings-section { margin-top: 4px; }

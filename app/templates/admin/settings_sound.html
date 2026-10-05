@@ -1,0 +1,79 @@
+{% macro picker(field, current, with_inherit, inherit_label) %}
+<select name="sound_{{ field }}" data-sound-select>
+  {% if with_inherit %}<option value="" {{ 'selected' if not current }}>{{ inherit_label }}</option>{% endif %}
+  <option value="n" {{ 'selected' if current == 'n' }}>Kein Ton</option>
+  <optgroup label="Eingebaut">
+    {% for key, label in builtins %}<option value="b:{{ key }}" data-play="b:{{ key }}" {{ 'selected' if current == 'b:' ~ key }}>{{ label }}</option>{% endfor %}
+  </optgroup>
+  {% if customs %}
+  <optgroup label="Eigene Töne">
+    {% for c in customs %}<option value="f:{{ c.id }}" data-play="f:/static/uploads/{{ c.filename }}" {{ 'selected' if current == 'f:' ~ c.id }}>{{ c.name }}</option>{% endfor %}
+  </optgroup>
+  {% endif %}
+</select>
+<button type="button" class="sound-test" data-sound-test>▶ Probe</button>
+{% endmacro %}
+<section class="category" id="sound-settings">
+  <h2>Klingelton für neue Bestellungen</h2>
+  <p class="hint">
+    Solange eine Bestellung noch nicht angenommen oder abgelehnt ist, klingelt es: erst so lange wie „Klingeln“, dann Ruhe wie „Pause“,
+    dann wieder. Sobald die Bestellung bearbeitet ist (auch auf einem anderen Gerät), ist Ruhe. Damit es klingelt, muss die Bestellseite im Browser
+    offen sein und einmal der Knopf „Ton“ auf der Bestellseite angetippt worden sein. Ton an/aus gilt pro Gerät.
+  </p>
+  {% if error %}<p class="notice">{{ error }}</p>{% endif %}
+  <form method="post" action="/admin/settings/sound">
+    <label class="w-money">Klingeln (Sekunden)
+      <input type="number" name="ring_seconds" min="1" max="60" value="{{ prefs.ring_seconds }}">
+    </label>
+    <label class="w-money">Pause (Sekunden)
+      <input type="number" name="pause_seconds" min="1" max="120" value="{{ prefs.pause_seconds }}">
+    </label>
+    <label>Lautstärke (0–100)
+      <input type="range" name="volume" min="0" max="100" value="{{ prefs.volume }}">
+    </label>
+    <label>Standard-Ton {{ picker('default', prefs.default, false, '') }}</label>
+    <label>Abholung {{ picker('pickup', prefs.pickup, true, 'wie Standard') }}</label>
+    {% for z in zone_list %}
+    <label>Lieferung {{ z.name }} {{ picker('zone_' ~ z.id, prefs.get('zone_' ~ z.id, ''), true, 'wie Standard') }}</label>
+    {% endfor %}
+    {% if not zone_list %}<p class="hint">Sobald du unter Bestellung → Liefergebiete Zonen anlegst, kannst du hier je Gebiet einen eigenen Ton wählen.</p>{% endif %}
+    <button type="submit">Speichern</button>
+  </form>
+</section>
+
+<section class="category">
+  <h2>Eigene Töne</h2>
+  <p class="hint">mp3, wav, ogg oder m4a, höchstens 1 MB. Am besten ein kurzer Ton von wenigen Sekunden; er wird für die „Klingeln“-Dauer wiederholt.</p>
+  {% if customs %}
+  <ul class="plain-list">
+    {% for c in customs %}
+    <li>
+      {{ c.name }}
+      <button type="button" class="sound-test" data-play="f:/static/uploads/{{ c.filename }}" data-sound-test>▶ Probe</button>
+      <form method="post" action="/admin/settings/sound/{{ c.id }}/delete" class="inline">
+        <button type="submit" class="danger" data-confirm="Ton „{{ c.name }}“ löschen? Orte, die ihn nutzen, fallen auf den Standard-Ton zurück.">Löschen</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <form method="post" action="/admin/settings/sound/upload" enctype="multipart/form-data">
+    <label>Name
+      <input type="text" name="name" maxlength="40" placeholder="z. B. Liestal">
+    </label>
+    <label>Datei
+      <input type="file" name="file" accept=".mp3,.wav,.ogg,.m4a,audio/*" required>
+    </label>
+    <button type="submit">Hochladen</button>
+  </form>
+</section>
+<script>
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-sound-test]'); if (!b) return;
+  var spec = b.dataset.play;
+  if (!spec) { var sel = b.previousElementSibling; var opt = sel && sel.selectedOptions[0]; spec = opt && opt.dataset.play; }
+  if (!spec) return;
+  var vol = document.querySelector('input[name=volume]');
+  window.BstellSound.preview(spec, vol ? vol.value : 80);
+});
+</script>

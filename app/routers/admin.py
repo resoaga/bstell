@@ -20,6 +20,7 @@ from .. import audit
 from .. import customer as cust
 from .. import zones as zones_lib
 from .. import orderflow
+from .. import sounds as sounds_lib
 from ..auth import require_admin, verify_same_origin
 from .. import timeutil
 from ..assets import admin_version, css_version
@@ -174,7 +175,7 @@ ORDER_TEMPLATE_EXTRAS = {
 SETTINGS_TABS = [
     ("betrieb", "Betrieb", ["general", "hours", "closures"]),
     ("bestellung", "Bestellung", ["ordering", "times", "delivery-zone", "payment"]),
-    ("mitteilungen", "Benachrichtigung", ["email"]),
+    ("mitteilungen", "Benachrichtigung", ["email", "sound"]),
     ("legal", "Rechtliches", ["legal"]),
     ("customers", "Kunden", ["customers"]),
     ("benutzer", "Benutzer", ["users"]),
@@ -822,6 +823,7 @@ def _orders_context(db: Session) -> dict:
         "payment_labels": PAYMENT_LABELS,
         "cancel_reasons": _cancel_reasons(db),
         "estimate": {"pickup": 15, "delivery": 30},
+        "sounds": sounds_lib.specs_for_orders(db, [o for o in open_orders if o.status == OrderStatus.received]),
         **ORDER_TEMPLATE_EXTRAS,
     }
 
@@ -831,7 +833,9 @@ def orders_list(request: Request, db: Session = Depends(get_db)):
     settings = get_settings(db)
     ctx = _orders_context(db)
     ctx["estimate"] = {"pickup": settings.estimated_pickup_minutes, "delivery": settings.estimated_delivery_minutes}
-    return templates.TemplateResponse("admin/orders_list.html", {"request": request, **ctx})
+    return templates.TemplateResponse(
+        "admin/orders_list.html", {"request": request, "sound_cfg": sounds_lib.ring_config(db), **ctx}
+    )
 
 
 PERIODS = {"today": "Heute", "7": "7 Tage", "30": "30 Tage", "all": "Alle"}
@@ -1526,8 +1530,9 @@ def _register_settings_routes():
             router.add_api_route(f"/settings/{sec}", old, methods=["GET"])
 
 
-from . import admin_closures, admin_users  # noqa: E402
+from . import admin_closures, admin_sound, admin_users  # noqa: E402
 
 admin_users.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 admin_closures.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
+admin_sound.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 _register_settings_routes()

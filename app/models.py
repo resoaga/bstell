@@ -461,3 +461,23 @@ class ClosedPeriod(Base):
     start_date = Column(String, nullable=False)
     end_date = Column(String, nullable=False)
     reason = Column(String, default="")
+
+
+class AppPref(Base):
+    """Key/value settings. Ring for new orders: ring_seconds, pause_seconds, volume,
+    default, pickup, zone_<id>. Values for sounds: "b:<builtin>", "f:<custom sound id>", "n" (none)."""
+
+    __tablename__ = "app_prefs"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, default="")
+
+
+class CustomSound(Base):
+    """A sound file uploaded by the owner (mp3/wav/ogg), stored in static/uploads."""
+
+    __tablename__ = "custom_sounds"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    filename = Column(String, nullable=False)

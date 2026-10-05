@@ -73,3 +73,82 @@
     ask(f, e.submitter, el);
   }, true);
 })();
+
+/* Klingelton für neue Bestellungen (Bestellseite + Probe in den Einstellungen) */
+window.BstellSound = (function () {
+  var ctx = null, audioEl = null, stopTimer = null;
+  function audioCtx() {
+    if (!ctx) { var C = window.AudioContext || window.webkitAudioContext; if (C) ctx = new C(); }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(t, freq, len, vol, type) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + len + 0.02);
+  }
+  // Each pattern schedules one round at time t and returns its length in seconds
+  var PATTERNS = {
+    klingel: function (t, v) { [880, 660, 880].forEach(function (f, i) { tone(t + i * 0.28, f, 0.24, 0.35 * v); }); return 0.9; },
+    glocke: function (t, v) { [0, 0.7].forEach(function (d) { tone(t + d, 1046, 0.9, 0.3 * v); tone(t + d, 1568, 0.6, 0.15 * v); }); return 1.5; },
+    pling: function (t, v) { tone(t, 1320, 0.18, 0.35 * v); tone(t + 0.22, 1760, 0.25, 0.35 * v); return 0.6; },
+    sirene: function (t, v) { for (var i = 0; i < 4; i++) tone(t + i * 0.3, i % 2 ? 620 : 880, 0.28, 0.3 * v, 'triangle'); return 1.3; },
+    fanfare: function (t, v) { [523, 659, 784, 1046].forEach(function (f, i) { tone(t + i * 0.17, f, 0.2, 0.3 * v, 'square'); }); tone(t + 0.8, 1046, 0.5, 0.3 * v, 'square'); return 1.4; }
+  };
+  var roundTimer = null;
+  function stop() {
+    clearTimeout(roundTimer); clearTimeout(stopTimer);
+    if (audioEl) { audioEl.pause(); audioEl = null; }
+  }
+  // Plays "b:name" / "f:/url" for `seconds` (repeating), then stops
+  function play(spec, seconds, volume) {
+    stop();
+    var vol = Math.max(0, Math.min(100, +volume || 0)) / 100;
+    if (!spec || spec === 'n' || vol === 0) return;
+    if (spec.indexOf('f:') === 0) {
+      audioEl = new Audio(spec.slice(2)); audioEl.loop = true; audioEl.volume = vol;
+      audioEl.play().catch(function () {});
+      stopTimer = setTimeout(stop, seconds * 1000);
+      return;
+    }
+    if (!audioCtx()) return;
+    var pattern = PATTERNS[spec.slice(2)] || PATTERNS.klingel;
+    var end = ctx.currentTime + seconds, next = ctx.currentTime;
+    (function schedule() {
+      if (next >= end) return;
+      next += pattern(next, vol) + 0.2;
+      roundTimer = setTimeout(schedule, Math.max(0, (next - ctx.currentTime - 0.5) * 1000));
+    })();
+    stopTimer = setTimeout(stop, seconds * 1000 + 300);
+  }
+  function preview(spec, volume) { play(spec, 3, volume); }
+
+  // Ringer: ring `ring` s, silence `pause` s, again - as long as getSpec() returns something
+  function Ringer(cfg, getSpecs) {
+    var state = 'idle', timer = null, turn = 0;
+    function cycle() {
+      var specs = getSpecs();
+      if (!specs.length) { state = 'idle'; stop(); return; }
+      state = 'ring';
+      play(specs[turn++ % specs.length], cfg.ring, cfg.volume);
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      timer = setTimeout(function () {
+        stop(); state = 'pause';
+        timer = setTimeout(cycle, cfg.pause * 1000);
+      }, cfg.ring * 1000);
+    }
+    return {
+      check: function () {
+        var has = getSpecs().length > 0;
+        if (state === 'idle' && has) cycle();
+        else if (state !== 'idle' && !has) { clearTimeout(timer); state = 'idle'; stop(); }
+      },
+      off: function () { clearTimeout(timer); state = 'idle'; stop(); },
+      idle: function () { return state === 'idle'; }
+    };
+  }
+  return { unlock: audioCtx, preview: preview, Ringer: Ringer, stop: stop, ready: function () { return !ctx || ctx.state === 'running'; } };
+})();

@@ -4,7 +4,7 @@
 <div class="page-head">
   <h2>Bestellungen</h2>
   <div class="view-tabs"><a class="active" href="/admin/orders">Live</a><a href="/admin/orders/history">Verlauf</a></div>
-  <button type="button" id="sound-btn" class="sound-btn" aria-pressed="false">🔕 Ton aus</button>
+  <button type="button" id="sound-btn" class="sound-btn" aria-pressed="false" data-ring="{{ sound_cfg.ring }}" data-pause="{{ sound_cfg.pause }}" data-volume="{{ sound_cfg.volume }}">🔕 Ton aus</button>
 </div>
 <p id="sound-hint" class="hint" hidden>Tippe einmal auf „Ton aus“, um den Signalton bei neuen Bestellungen zu aktivieren (der Browser erlaubt Ton erst nach einem Klick).</p>
 <div class="ord-bar" id="ord-filters">
@@ -26,43 +26,31 @@
 (function () {
   var btn = document.getElementById('sound-btn');
   var hint = document.getElementById('sound-hint');
-  var ctx = null;
   var on = localStorage.getItem('ordersSound') === '1';
-  var lastMax = parseInt(document.getElementById('orders-feed').dataset.maxId, 10) || 0;
   var baseTitle = document.title;
+  var cfg = { ring: +btn.dataset.ring || 5, pause: +btn.dataset.pause || 5, volume: +btn.dataset.volume };
+  var ringer = BstellSound.Ringer(cfg, function () {
+    // distinct sounds of the orders that still wait for an answer
+    var out = [];
+    document.querySelectorAll('#orders-feed .ord[data-status="received"]').forEach(function (c) {
+      var sp = c.dataset.sound || 'b:klingel'; if (out.indexOf(sp) < 0) out.push(sp);
+    });
+    return out;
+  });
 
   function render() {
     btn.textContent = on ? '🔔 Ton an' : '🔕 Ton aus';
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     btn.classList.toggle('is-on', on);
-    hint.hidden = !(on && (!ctx || ctx.state === 'suspended'));
-  }
-  function audio() {
-    if (!ctx) { var C = window.AudioContext || window.webkitAudioContext; if (C) ctx = new C(); }
-    if (ctx && ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-  function beep() {
-    if (!on || !audio()) return;
-    var t = ctx.currentTime;
-    [880, 660, 880].forEach(function (f, i) {
-      var o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t + i * 0.28);
-      g.gain.exponentialRampToValueAtTime(0.35, t + i * 0.28 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.28 + 0.24);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(t + i * 0.28); o.stop(t + i * 0.28 + 0.26);
-    });
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    hint.hidden = !(on && !BstellSound.ready());
   }
   btn.addEventListener('click', function () {
     on = !on; localStorage.setItem('ordersSound', on ? '1' : '0');
-    if (on) { audio(); beep(); }
+    if (on) { BstellSound.unlock(); BstellSound.preview('b:pling', cfg.volume); ringer.check(); } else { ringer.off(); }
     render();
   });
   // Browsers only unlock audio after a gesture: any tap on the page does it
-  document.addEventListener('click', function () { if (on) { audio(); render(); } }, { once: false });
+  document.addEventListener('click', function () { if (on) { BstellSound.unlock(); render(); } });
 
   var filters = JSON.parse(sessionStorage.getItem('ordersFilter') || '{"status":"","kind":""}');
   function applyFilters() {
@@ -91,9 +79,8 @@
     applyFilters();
     var feed = document.getElementById('orders-feed');
     if (!feed) return;
-    var max = parseInt(feed.dataset.maxId, 10) || 0;
     var fresh = parseInt(feed.dataset.new, 10) || 0;
-    if (max > lastMax) { beep(); lastMax = max; }
+    if (on) ringer.check();
     document.title = (fresh ? '(' + fresh + ') ' : '') + baseTitle;
   }
   document.body.addEventListener('htmx:afterSwap', update);
