@@ -23,23 +23,65 @@ def require_freiwirt_token(x_freiwirt_token: str = Header(...), db: Session = De
         raise HTTPException(status_code=401, detail="Ungültiges Freiwirt-Token")
 
 
-class DeliveryStatusIn(BaseModel):
-    enabled: bool
+def _shop_json(db: Session) -> dict:
+    """Everything the Freiwirt header needs: the three switches (green = customers can really order
+    that way right now), the quoted waiting times and the cancel presets."""
+    from ..models import DEFAULT_CANCEL_REASONS
+    from ..repo import effective_shop, get_opening_hours_by_weekday
+
+    settings = get_settings(db)
+    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    live = bool(shop["can_order"])
+    reasons = [l.strip() for l in (settings.cancel_reasons or "").splitlines() if l.strip()]
+    return {
+        "accepting_orders": live,
+        "pickup": live and bool(settings.pickup_enabled),
+        "delivery": live and bool(settings.delivery_enabled),
+        "state": shop["state"],  # open | preorder | closed (opening hours)
+        "opens_text": shop.get("opens_text", ""),
+        "pickup_minutes": settings.estimated_pickup_minutes or 0,
+        "delivery_minutes": settings.estimated_delivery_minutes or 0,
+        "cancel_reasons": reasons or list(DEFAULT_CANCEL_REASONS),
+    }
 
 
 @router.get("/status", dependencies=[Depends(require_freiwirt_token)])
-def get_delivery_status(db: Session = Depends(get_db)):
-    settings = get_settings(db)
-    return {"accepting_orders": settings.accepting_orders}
+def get_shop_status(db: Session = Depends(get_db)):
+    return _shop_json(db)
 
 
-@router.post("/lieferung", dependencies=[Depends(require_freiwirt_token)])
-def set_delivery_status(payload: DeliveryStatusIn, db: Session = Depends(get_db)):
+@router.post("/schalter/{field}", dependencies=[Depends(require_freiwirt_token)])
+def toggle_switch(field: str, request: Request, db: Session = Depends(get_db)):
+    """Same one-tap switches as the admin dashboard: bestellungen | lieferung | abholung."""
+    from .. import audit
+    from ..repo import apply_quick_switch, effective_shop, get_opening_hours_by_weekday
+
+    fields = {"bestellungen": "accepting_orders", "lieferung": "delivery_enabled", "abholung": "pickup_enabled"}
+    if field not in fields:
+        raise HTTPException(status_code=404, detail="Unbekannter Schalter")
     settings = get_settings(db)
-    settings.accepting_orders = payload.enabled
-    settings.order_override = ""
+    shop = effective_shop(settings, get_opening_hours_by_weekday(db))
+    text = apply_quick_switch(settings, shop, fields[field])
     db.commit()
-    return {"accepting_orders": settings.accepting_orders}
+    audit.note(request, "Freiwirt: " + text)
+    return _shop_json(db)
+
+
+class WaitTimesIn(BaseModel):
+    pickup_minutes: Optional[int] = None
+    delivery_minutes: Optional[int] = None
+
+
+@router.post("/zeiten", dependencies=[Depends(require_freiwirt_token)])
+def set_wait_times(payload: WaitTimesIn, db: Session = Depends(get_db)):
+    """Quoted waiting time shown to customers (e.g. busy night: Lieferung 30 -> 50 min)."""
+    settings = get_settings(db)
+    if payload.pickup_minutes is not None:
+        settings.estimated_pickup_minutes = max(0, min(payload.pickup_minutes, 240))
+    if payload.delivery_minutes is not None:
+        settings.estimated_delivery_minutes = max(0, min(payload.delivery_minutes, 240))
+    db.commit()
+    return _shop_json(db)
 
 
 class AvailabilityIn(BaseModel):

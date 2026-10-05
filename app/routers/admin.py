@@ -44,7 +44,7 @@ from ..models import (
     OrderStatus,
     SelectionType,
 )
-from ..repo import top_seller_ids, effective_shop, get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
+from ..repo import apply_quick_switch, top_seller_ids, effective_shop, get_all_content_pages, get_content_page, get_opening_hours_by_weekday, get_settings
 
 UPLOAD_DIR = "app/static/uploads"
 
@@ -220,37 +220,14 @@ def _switch_rows(db: Session) -> list:
     ]
 
 
-def _force_orders(settings, shop: dict, open_: bool) -> None:
-    """Manual override of the opening hours until they change state (opening / closing time)."""
-    settings.order_override = "open" if open_ else "closed"
-    settings.order_override_base = "closed" if shop["state"] == "closed" else "open"
-
-
 @router.post("/quick/{field}", dependencies=mutating)
 def quick_switch(field: str, request: Request, db: Session = Depends(get_db)):
-    """One-tap on/off for the website. Bestellungen is the master: off turns everything off,
-    on turns both ways on; Lieferung / Abholung switch alone and wake or stop the master."""
+    """One-tap on/off for the website (logic shared with the Freiwirt API, see repo.apply_quick_switch)."""
     if field not in dict(QUICK_SWITCHES):
         raise HTTPException(status_code=404, detail="Unbekannter Schalter")
     settings = get_settings(db)
     shop = effective_shop(settings, get_opening_hours_by_weekday(db))
-    live = shop["can_order"]
-    if field == "accepting_orders":
-        turn_on = not live
-        settings.pickup_enabled = settings.delivery_enabled = turn_on
-        _force_orders(settings, shop, turn_on)
-        text = "Bestellungen: " + ("an (Lieferung + Abholung)" if turn_on else "aus (alles aus)")
-    else:
-        other = "pickup_enabled" if field == "delivery_enabled" else "delivery_enabled"
-        turn_on = not (live and getattr(settings, field))
-        if turn_on and not live:
-            setattr(settings, other, False)  # waking the shop with one way only
-        setattr(settings, field, turn_on)
-        if turn_on:
-            _force_orders(settings, shop, True)
-        elif not getattr(settings, other):
-            _force_orders(settings, shop, False)
-        text = f"{dict(QUICK_SWITCHES)[field]}: {'an' if turn_on else 'aus'}"
+    text = apply_quick_switch(settings, shop, field)
     db.commit()
     audit.note(request, text)
     return _switches_response(request, db)

@@ -65,7 +65,8 @@ def effective_shop(settings, hours_by_weekday: dict) -> dict:
     """shop_status plus the manual dashboard switch. can_order: customers may order right now.
     paused: shop is shut by hand / by the master switch (not just outside hours)."""
     shop = shop_status(hours_by_weekday, settings.preorder_minutes)
-    base = "closed" if shop["state"] == "closed" else "open"
+    hours_state = shop["state"]  # what the opening hours say, before any manual override
+    base = "closed" if hours_state == "closed" else "open"
     override = settings.order_override if settings.order_override_base == base else ""
     if override == "open":
         shop = {"state": "open", "opens_text": ""}
@@ -77,6 +78,7 @@ def effective_shop(settings, hours_by_weekday: dict) -> dict:
         shop["can_order"] = bool(settings.accepting_orders and shop["state"] in ("open", "preorder"))
     if not (settings.pickup_enabled or settings.delivery_enabled):
         shop["paused"], shop["can_order"] = True, False
+    shop["hours_state"] = hours_state
     return shop
 
 
@@ -171,3 +173,38 @@ def seller_ranking(db: Session) -> list:
 def top_seller_ids(db: Session) -> list:
     """The "Meistverkauft" articles: top 3 of the week, each sold at least TOP_MIN_QTY times."""
     return [i for i, qty in seller_ranking(db) if qty >= TOP_MIN_QTY][:TOP_COUNT]
+
+
+QUICK_SWITCH_LABELS = {
+    "accepting_orders": "Bestellungen",
+    "delivery_enabled": "Lieferung",
+    "pickup_enabled": "Abholung",
+}
+
+
+def force_orders(settings, shop: dict, open_: bool) -> None:
+    """Manual override of the opening hours until they change state (opening / closing time)."""
+    settings.order_override = "open" if open_ else "closed"
+    settings.order_override_base = "closed" if shop.get("hours_state", shop["state"]) == "closed" else "open"
+
+
+def apply_quick_switch(settings, shop: dict, field: str) -> str:
+    """Toggle one of the three dashboard switches (shared by the admin and the Freiwirt API).
+    Bestellungen is the master: off turns everything off, on turns both ways on; Lieferung /
+    Abholung switch alone and wake or stop the master. Returns the audit text."""
+    live = shop["can_order"]
+    if field == "accepting_orders":
+        turn_on = not live
+        settings.pickup_enabled = settings.delivery_enabled = turn_on
+        force_orders(settings, shop, turn_on)
+        return "Bestellungen: " + ("an (Lieferung + Abholung)" if turn_on else "aus (alles aus)")
+    other = "pickup_enabled" if field == "delivery_enabled" else "delivery_enabled"
+    turn_on = not (live and getattr(settings, field))
+    if turn_on and not live:
+        setattr(settings, other, False)  # waking the shop with one way only
+    setattr(settings, field, turn_on)
+    if turn_on:
+        force_orders(settings, shop, True)
+    elif not getattr(settings, other):
+        force_orders(settings, shop, False)
+    return f"{QUICK_SWITCH_LABELS[field]}: {'an' if turn_on else 'aus'}"
