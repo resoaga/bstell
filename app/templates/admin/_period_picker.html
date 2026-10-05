@@ -1,0 +1,9 @@
+<div class="chips period-chips">
+  {% for k, l in chips %}<a class="fchip {{ 'is-on' if k == key }}" href="{{ base }}?p={{ k }}#{{ anchor }}">{{ l }}</a>{% endfor %}
+</div>
+<form method="get" action="{{ base }}" class="period-custom">
+  <input type="hidden" name="p" value="custom">
+  <label>Von <input type="date" name="from" value="{{ first.isoformat() }}" required></label>
+  <label>Bis <input type="date" name="to" value="{{ last.isoformat() }}" required></label>
+  <button type="submit">Anzeigen</button>
+</form>

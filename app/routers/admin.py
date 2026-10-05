@@ -176,6 +176,8 @@ SETTINGS_TABS = [
     ("betrieb", "Betrieb", ["general", "hours", "closures"]),
     ("bestellung", "Bestellung", ["ordering", "times", "delivery-zone", "payment"]),
     ("mitteilungen", "Benachrichtigung", ["email", "sound"]),
+    ("statistik", "Statistik", ["statistics"]),
+    ("zahlen", "Zahlen", ["figures"]),
     ("legal", "Rechtliches", ["legal"]),
     ("customers", "Kunden", ["customers"]),
     ("benutzer", "Benutzer", ["users"]),
@@ -1530,9 +1532,10 @@ def _register_settings_routes():
             router.add_api_route(f"/settings/{sec}", old, methods=["GET"])
 
 
-from . import admin_closures, admin_sound, admin_users  # noqa: E402
+from . import admin_closures, admin_sound, admin_stats, admin_users  # noqa: E402
 
 admin_users.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 admin_closures.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 admin_sound.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
+admin_stats.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 _register_settings_routes()

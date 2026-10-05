@@ -1,0 +1,39 @@
+{% macro chf(x) %}{{ "{:,.2f}".format(x).replace(",", "'") }}{% endmacro %}
+<section class="category" id="figures">
+  <h2>Zahlen für die Buchhaltung</h2>
+  <p class="hint">
+    Umsatzzahlen aus den Bestellungen, ohne stornierte. Das ist keine Buchhaltung, sondern die Grundlage dafür.
+    Zeitraum: <strong>{{ label }}</strong>.
+  </p>
+  {% with base = "/admin/settings/zahlen", anchor = "figures" %}{% include "admin/_period_picker.html" %}{% endwith %}
+  <p>
+    <a class="btn" href="/admin/settings/figures/export.pdf?{{ query }}">PDF herunterladen</a>
+    <a class="btn secondary" href="/admin/settings/figures/export.csv?{{ query }}">CSV (Excel) herunterladen</a>
+  </p>
+  <table class="plain figures">
+    <tr><td>Bestellungen</td><td class="num">{{ summary.count }}</td></tr>
+    <tr><td>Warenwert (Artikel)</td><td class="num">CHF {{ chf(summary.goods) }}</td></tr>
+    <tr><td>Lieferkosten</td><td class="num">CHF {{ chf(summary.delivery_fees) }}</td></tr>
+    <tr><td>Servicegebühr</td><td class="num">CHF {{ chf(summary.service_fees) }}</td></tr>
+    <tr class="total"><td>Gesamtumsatz (brutto)</td><td class="num">CHF {{ chf(summary.revenue) }}</td></tr>
+    {% if vat_rate %}
+    <tr><td>davon MwSt ({{ vat_rate }} %)</td><td class="num">CHF {{ chf(vat) }}</td></tr>
+    <tr><td>Umsatz netto</td><td class="num">CHF {{ chf(net) }}</td></tr>
+    {% endif %}
+    {% if summary.cancelled %}<tr><td>Storniert (nicht enthalten)</td><td class="num">{{ summary.cancelled }} · CHF {{ chf(summary.cancelled_value) }}</td></tr>{% endif %}
+  </table>
+  <h3 class="sub">Nach Zahlungsart</h3>
+  <table class="plain">{% for p in payments %}<tr><td>{{ p.label }}</td><td class="num">{{ p.count }}</td><td class="num">CHF {{ chf(p.revenue) }}</td></tr>{% else %}<tr><td class="empty">Keine Bestellungen.</td></tr>{% endfor %}</table>
+  <h3 class="sub">Pro Tag</h3>
+  <table class="plain">{% for x in days %}<tr><td>{{ x.day.strftime('%d.%m.%Y') }}</td><td class="num">{{ x.count }}</td><td class="num">CHF {{ chf(x.revenue) }}</td></tr>{% endfor %}</table>
+</section>
+<section class="category">
+  <h2>MwSt-Satz für die Auswertung</h2>
+  <form method="post" action="/admin/settings/figures/vat">
+    <label class="w-money">MwSt-Satz (%)
+      <input type="number" name="vat_rate" min="0" max="30" step="0.1" value="{{ vat_rate if vat_rate else '' }}" placeholder="z. B. 8.1">
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+  <p class="hint">Leer lassen, wenn du nicht mehrwertsteuerpflichtig bist. Mit Satz zeigt die Auswertung den MwSt-Anteil an. Gilt ein Satz für alles; bei gemischten Sätzen (z. B. 2.6 % und 8.1 %) bitte den Treuhänder fragen.</p>
+</section>

@@ -43,6 +43,7 @@ ACTIONS = [
     (r"^/settings/email/test$", "Test-Mail gesendet"),
     (r"^/settings/email$", "E-Mail-Einstellungen geändert"),
     (r"^/settings/hours", "Öffnungszeiten geändert"),
+    (r"^/settings/figures/vat$", "MwSt-Satz geändert"),
     (r"^/settings/sound$", "Klingelton-Einstellungen geändert"),
     (r"^/settings/sound/upload$", "Eigenen Ton hochgeladen"),
     (r"^/settings/sound/\d+/delete$", "Eigenen Ton gelöscht"),

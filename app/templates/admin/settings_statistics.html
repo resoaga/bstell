@@ -1,0 +1,66 @@
+{% macro bar(value, maximum) %}<span class="bar"><span style="width: {{ (100 * value / maximum)|round(1) if maximum else 0 }}%"></span></span>{% endmacro %}
+{% macro chf(x) %}{{ "{:,.2f}".format(x).replace(",", "'") }}{% endmacro %}
+{% set s = d.summary %}
+<section class="category" id="statistics">
+  <h2>Statistik</h2>
+  <p class="hint">Alle Zahlen ohne stornierte Bestellungen (die stehen separat). Zeitraum: <strong>{{ label }}</strong>.</p>
+  {% with base = "/admin/settings/statistik", anchor = "statistics" %}{% include "admin/_period_picker.html" %}{% endwith %}
+
+  <div class="kpis">
+    <div class="kpi"><span>Bestellungen</span><strong>{{ s.count }}</strong></div>
+    <div class="kpi"><span>Umsatz</span><strong>CHF {{ chf(s.revenue) }}</strong></div>
+    <div class="kpi"><span>Ø pro Bestellung</span><strong>CHF {{ chf(s.average) }}</strong></div>
+    <div class="kpi"><span>Lieferung / Abholung</span><strong>{{ s.delivery_count }} / {{ s.pickup_count }}</strong></div>
+    <div class="kpi"><span>Lieferkosten eingenommen</span><strong>CHF {{ chf(s.delivery_fees) }}</strong></div>
+    <div class="kpi"><span>Servicegebühren</span><strong>CHF {{ chf(s.service_fees) }}</strong></div>
+    <div class="kpi"><span>Storniert</span><strong>{{ s.cancelled }}</strong>{% if s.cancelled %}<em>CHF {{ chf(s.cancelled_value) }}</em>{% endif %}</div>
+    <div class="kpi"><span>Kunden</span><strong>{{ d.customers.total }}</strong><em>{{ d.customers.new }} neu · {{ d.customers.returning }} wiederkehrend</em></div>
+  </div>
+</section>
+
+{% if s.count %}
+<section class="category">
+  <h2>Nach Liefergebiet</h2>
+  {% if d.zones %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Gebiet</th><th class="num">Bestellungen</th><th class="num">Umsatz</th><th class="num">Ø</th><th class="num">Lieferkosten</th><th></th></tr></thead>
+    <tbody>{% for z in d.zones %}
+      <tr><td>{{ z.name }}</td><td class="num">{{ z.count }}</td><td class="num">{{ chf(z.revenue) }}</td><td class="num">{{ chf(z.average) }}</td><td class="num">{{ chf(z.fees) }}</td><td class="barcell">{{ bar(z.revenue, max_zone) }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <h3 class="sub">Top Postleitzahlen (Lieferung)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Ort</th><th class="num">Bestellungen</th><th class="num">Umsatz</th></tr></thead>
+    <tbody>{% for z in d.zips %}<tr><td>{{ z.name }}</td><td class="num">{{ z.count }}</td><td class="num">{{ chf(z.revenue) }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty">Keine Lieferungen in diesem Zeitraum.</p>{% endif %}
+</section>
+
+<section class="category">
+  <h2>Wann bestellt wird</h2>
+  <h3 class="sub">Nach Uhrzeit</h3>
+  <table class="plain">{% for h, c in hour_rows %}<tr><td class="num">{{ '%02d' % h }}:00</td><td class="barcell wide">{{ bar(c, max_hour) }}</td><td class="num">{{ c }}</td></tr>{% endfor %}</table>
+  <h3 class="sub">Nach Wochentag</h3>
+  <table class="plain">{% for w in d.weekdays %}<tr><td>{{ w.label }}</td><td class="barcell wide">{{ bar(w.count, max_weekday) }}</td><td class="num">{{ w.count }}</td><td class="num">CHF {{ chf(w.revenue) }}</td></tr>{% endfor %}</table>
+  {% if d.days|length > 1 %}
+  <h3 class="sub">Pro Tag</h3>
+  <table class="plain">{% for x in d.days %}<tr><td>{{ x.day.strftime('%d.%m.%Y') }}</td><td class="barcell wide">{{ bar(x.count, max_day) }}</td><td class="num">{{ x.count }}</td><td class="num">CHF {{ chf(x.revenue) }}</td></tr>{% endfor %}</table>
+  {% endif %}
+</section>
+
+<section class="category">
+  <h2>Beliebteste Artikel</h2>
+  <table class="plain">{% for i in d.top_items %}<tr><td>{{ i.name }}</td><td class="barcell wide">{{ bar(i.qty, max_item) }}</td><td class="num">{{ i.qty }}×</td><td class="num">CHF {{ chf(i.revenue) }}</td></tr>{% endfor %}</table>
+</section>
+
+<section class="category">
+  <h2>Zahlungsart und Stornos</h2>
+  <table class="plain">{% for p in d.payments %}<tr><td>{{ p.label }}</td><td class="num">{{ p.count }} Bestellungen</td><td class="num">CHF {{ chf(p.revenue) }}</td></tr>{% endfor %}</table>
+  {% if d.cancel_reasons %}
+  <h3 class="sub">Stornogründe</h3>
+  <table class="plain">{% for reason, n in d.cancel_reasons %}<tr><td>{{ reason }}</td><td class="num">{{ n }}</td></tr>{% endfor %}</table>
+  {% endif %}
+</section>
+{% else %}
+<section class="category"><p class="empty">Keine Bestellungen in diesem Zeitraum.</p></section>
+{% endif %}
