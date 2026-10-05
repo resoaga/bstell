@@ -172,7 +172,7 @@ ORDER_TEMPLATE_EXTRAS = {
 # (slug, label, sections). Every section keeps its own template and view function; a tab page
 # renders its sections one below the other. Hidden tabs have no entry in the navigation.
 SETTINGS_TABS = [
-    ("betrieb", "Betrieb", ["general", "hours"]),
+    ("betrieb", "Betrieb", ["general", "hours", "closures"]),
     ("bestellung", "Bestellung", ["ordering", "times", "delivery-zone", "payment"]),
     ("mitteilungen", "Benachrichtigung", ["email"]),
     ("legal", "Rechtliches", ["legal"]),
@@ -1526,7 +1526,8 @@ def _register_settings_routes():
             router.add_api_route(f"/settings/{sec}", old, methods=["GET"])
 
 
-from . import admin_users  # noqa: E402
+from . import admin_closures, admin_users  # noqa: E402
 
 admin_users.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
+admin_closures.setup(router, templates, mutating, EXTRA_SECTION_VIEWS)
 _register_settings_routes()

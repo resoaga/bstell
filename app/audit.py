@@ -43,6 +43,8 @@ ACTIONS = [
     (r"^/settings/email/test$", "Test-Mail gesendet"),
     (r"^/settings/email$", "E-Mail-Einstellungen geändert"),
     (r"^/settings/hours", "Öffnungszeiten geändert"),
+    (r"^/settings/closures/new$", "Schliesstag eingetragen"),
+    (r"^/settings/closures/\d+/delete$", "Schliesstag gelöscht"),
     (r"^/settings/users/new$", "Benutzer angelegt"),
     (r"^/settings/users/my-password$", "Eigenes Passwort geändert"),
     (r"^/settings/users/\d+/password$", "Passwort eines Benutzers geändert"),

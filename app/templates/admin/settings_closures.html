@@ -1,0 +1,43 @@
+<section class="category">
+  <h2>Ferien und Schliesstage</h2>
+  <p class="hint">
+    In diesen Zeiträumen ist die Webseite geschlossen, egal was bei den Öffnungszeiten steht. Der Grund erscheint für Kunden
+    (z. B. „Betriebsferien“) und die Webseite zeigt, wann wir wieder öffnen. Vergangene Einträge verschwinden von selbst.
+  </p>
+  {% if error %}<p class="notice">{{ error }}</p>{% endif %}
+  {% if rows %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Von</th><th>Bis</th><th>Grund</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="nowrap">{{ r.start_date[8:10] }}.{{ r.start_date[5:7] }}.{{ r.start_date[:4] }}</td>
+        <td class="nowrap">{{ r.end_date[8:10] }}.{{ r.end_date[5:7] }}.{{ r.end_date[:4] }}</td>
+        <td>{{ r.reason or "–" }}{% if r.start_date <= today %} <strong>(läuft jetzt)</strong>{% endif %}</td>
+        <td>
+          <form method="post" action="/admin/settings/closures/{{ r.id }}/delete" class="inline">
+            <button type="submit" class="danger" data-confirm="Diesen Eintrag löschen?">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">Keine Ferien oder Schliesstage eingetragen.</p>
+  {% endif %}
+  <form method="post" action="/admin/settings/closures/new">
+    <label>Von
+      <input type="date" name="start_date" min="{{ today }}" required>
+    </label>
+    <label>Bis (leer = nur ein Tag)
+      <input type="date" name="end_date" min="{{ today }}">
+    </label>
+    <label>Grund
+      <input type="text" name="reason" maxlength="60" placeholder="z. B. Betriebsferien, Weihnachten">
+    </label>
+    <button type="submit">Hinzufügen</button>
+  </form>
+</section>

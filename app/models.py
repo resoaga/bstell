@@ -450,3 +450,14 @@ class AdminUser(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False, default="admin")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ClosedPeriod(Base):
+    """Holidays / special closing days: no orders from start_date to end_date (inclusive, ISO dates)."""
+
+    __tablename__ = "closed_periods"
+
+    id = Column(Integer, primary_key=True)
+    start_date = Column(String, nullable=False)
+    end_date = Column(String, nullable=False)
+    reason = Column(String, default="")

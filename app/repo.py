@@ -14,6 +14,7 @@ from .models import (
     WEEKDAY_LABELS,
     ContentPage,
     MenuItem,
+    ClosedPeriod,
     OpeningHour,
     Order,
     OrderItem,
@@ -22,16 +23,38 @@ from .models import (
 )
 
 
+class HoursMap(dict):
+    """weekday -> opening windows, plus the current/upcoming closures (holidays, special days)."""
+
+    closures: list = []
+
+    def closure_on(self, day):
+        iso = day.isoformat()
+        return next((c for c in self.closures if c.start_date <= iso <= c.end_date), None)
+
+
 def get_opening_hours_by_weekday(db: Session) -> dict:
-    by_day = {weekday: [] for weekday in range(7)}
+    by_day = HoursMap({weekday: [] for weekday in range(7)})
+    by_day.closures = (
+        db.query(ClosedPeriod)
+        .filter(ClosedPeriod.end_date >= datetime.now().date().isoformat())
+        .order_by(ClosedPeriod.start_date)
+        .all()
+    )
     for hour in db.query(OpeningHour).order_by(OpeningHour.weekday, OpeningHour.open_time).all():
         by_day[hour.weekday].append(hour)
     return by_day
 
 
+def _closure_on(hours_by_weekday, day):
+    return hours_by_weekday.closure_on(day) if isinstance(hours_by_weekday, HoursMap) else None
+
+
 def is_currently_open(hours_by_weekday: dict) -> bool:
     now = datetime.now()
     current_time = now.strftime("%H:%M")
+    if _closure_on(hours_by_weekday, now.date()):
+        return False
     for window in hours_by_weekday.get(now.weekday(), []):
         if window.open_time <= current_time <= window.close_time:
             return True
@@ -63,6 +86,9 @@ def shop_status(hours_by_weekday: dict, preorder_minutes: int, now: datetime = N
     now = now or datetime.now()
     current = now.strftime("%H:%M")
     windows = sorted(hours_by_weekday.get(now.weekday(), []), key=lambda w: w.open_time)
+    closure = _closure_on(hours_by_weekday, now.date())
+    if closure:
+        windows = []
     for w in windows:
         if w.open_time <= current <= w.close_time:
             return {"state": "open", "opens_text": ""}
@@ -71,13 +97,20 @@ def shop_status(hours_by_weekday: dict, preorder_minutes: int, now: datetime = N
             opens = datetime.combine(now.date(), datetime.strptime(w.open_time, "%H:%M").time())
             state = "preorder" if opens - now <= timedelta(minutes=preorder_minutes or 0) else "closed"
             return {"state": state, "opens_text": w.open_time}
-    for offset in range(1, 8):
-        day = (now.weekday() + offset) % 7
+    reason = {"closure_reason": closure.reason or "Betriebsferien"} if closure else {}
+    for offset in range(1, 90):
+        date = now.date() + timedelta(days=offset)
+        day = date.weekday()
         next_windows = sorted(hours_by_weekday.get(day, []), key=lambda w: w.open_time)
-        if next_windows:
-            when = "morgen" if offset == 1 else WEEKDAY_LABELS[day][:2]
-            return {"state": "closed", "opens_text": f"{when} {next_windows[0].open_time}"}
-    return {"state": "closed", "opens_text": ""}
+        if next_windows and not _closure_on(hours_by_weekday, date):
+            if offset == 1:
+                when = "morgen"
+            elif offset < 7:
+                when = WEEKDAY_LABELS[day][:2]
+            else:
+                when = date.strftime("%d.%m.")
+            return {"state": "closed", "opens_text": f"{when} {next_windows[0].open_time}", **reason}
+    return {"state": "closed", "opens_text": "", **reason}
 
 
 def get_settings(db: Session) -> RestaurantSettings:
