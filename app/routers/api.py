@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Category, MenuItem, Order, OrderStatus
 from ..repo import get_settings
-from ..timeutil import local_midnight_utc
 
 router = APIRouter(prefix="/api/freiwirt")
 
@@ -227,17 +226,6 @@ def set_order_status(order_id: int, payload: OrderStatusIn, request: Request, ba
         from .. import customer as cust, orderflow
         background.add_task(orderflow.send_cancellation, order.id, cust.public_base_url(request))
     return _order_json(order)
-
-
-@router.get("/heute", dependencies=[Depends(require_freiwirt_token)])
-def today_summary(db: Session = Depends(get_db)):
-    """Count and revenue of today's orders (local day), cancelled ones excluded."""
-    orders = (
-        db.query(Order)
-        .filter(Order.created_at >= local_midnight_utc(), Order.status.notin_([OrderStatus.cancelled, OrderStatus.awaiting_payment]))
-        .all()
-    )
-    return {"count": len(orders), "total": round(sum(o.total for o in orders), 2)}
 
 
 @router.get("/verlauf", dependencies=[Depends(require_freiwirt_token)])
