@@ -160,6 +160,7 @@ def set_category_available(category_id: int, payload: AvailabilityIn, db: Sessio
 class OrderStatusIn(BaseModel):
     status: OrderStatus
     reason: Optional[str] = None  # only used with status=cancelled
+    eta_minutes: Optional[int] = None  # only used with status=preparing: promised time for the customer
 
 
 ALLOWED_TRANSITIONS = {
@@ -184,6 +185,8 @@ def _order_json(order: Order) -> dict:
         "payment": order.payment_method,  # cash | card (collect at handover) | online (already paid)
         "paid": order.payment_method == "online",
         "cancel_reason": order.cancel_reason or "",
+        "accepted_at": order.accepted_at.isoformat() if order.accepted_at else None,
+        "eta_minutes": order.eta_minutes,
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
@@ -219,6 +222,10 @@ def set_order_status(order_id: int, payload: OrderStatusIn, request: Request, ba
     if payload.status not in ALLOWED_TRANSITIONS.get(order.status, set()):
         raise HTTPException(status_code=409, detail=f"Wechsel {order.status.value} -> {payload.status.value} nicht erlaubt")
     order.status = payload.status
+    if payload.status == OrderStatus.preparing:
+        order.accepted_at = datetime.utcnow()
+        if payload.eta_minutes:
+            order.eta_minutes = max(1, min(payload.eta_minutes, 240))
     if payload.status == OrderStatus.cancelled:
         order.cancel_reason = (payload.reason or "").strip()[:200]
     db.commit()
@@ -229,12 +236,14 @@ def set_order_status(order_id: int, payload: OrderStatusIn, request: Request, ba
 
 
 @router.get("/verlauf", dependencies=[Depends(require_freiwirt_token)])
-def order_history(limit: int = 60, db: Session = Depends(get_db)):
-    """Finished orders (completed or cancelled), newest first, for the history list."""
-    limit = max(1, min(200, limit))
+def order_history(limit: int = 200, days: int = 7, db: Session = Depends(get_db)):
+    """Finished orders (completed or cancelled) of the last `days` days, newest first.
+    Older ones stay in bstell (admin) only."""
+    limit = max(1, min(500, limit))
+    since = datetime.utcnow() - timedelta(days=max(1, min(days, 365)))
     orders = (
         db.query(Order)
-        .filter(Order.status.in_([OrderStatus.completed, OrderStatus.cancelled]))
+        .filter(Order.status.in_([OrderStatus.completed, OrderStatus.cancelled]), Order.created_at >= since)
         .order_by(Order.id.desc())
         .limit(limit)
         .all()

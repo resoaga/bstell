@@ -181,6 +181,8 @@ class Order(Base):
     service_fee_text = Column(String, default="")  # e.g. "Servicegebühr (2 % + CHF 0.30)" as it was when ordered
     cancel_reason = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)  # when the kitchen accepted it (status preparing)
+    eta_minutes = Column(Integer, nullable=True)  # promised time from acceptance, shown to the customer
 
     items = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.id"

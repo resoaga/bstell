@@ -636,6 +636,8 @@ def order_confirmation(order_id: int, request: Request, db: Session = Depends(ge
 def _remaining_minutes(order: Order, settings) -> Optional[int]:
     if order.status.value not in ("received", "preparing"):
         return None
+    if order.eta_minutes and order.accepted_at:  # the kitchen's own promise counts from acceptance
+        return max(0, round(order.eta_minutes - (datetime.utcnow() - order.accepted_at).total_seconds() / 60))
     estimate = (
         settings.estimated_delivery_minutes
         if order.order_type == OrderType.delivery

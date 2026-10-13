@@ -39,6 +39,8 @@ COLUMNS = [
     ("orders", "email", "VARCHAR DEFAULT ''"),
     ("orders", "device_key", "VARCHAR DEFAULT ''"),
     ("orders", "tracking_token", "VARCHAR DEFAULT ''"),
+    ("orders", "accepted_at", "DATETIME"),
+    ("orders", "eta_minutes", "INTEGER"),
 ]
 
 con = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else "bestellsystem.db")

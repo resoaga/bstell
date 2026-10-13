@@ -15,7 +15,7 @@
     <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_label }} · {% if order.payment_method == "online" %}online bezahlt{% else %}{{ payment_labels.get(order.payment_method, "") }} bei Übergabe{% endif %}</span>
   </p>
-  {% set minutes = settings.estimated_delivery_minutes if order.order_type.value == "delivery" else settings.estimated_pickup_minutes %}
+  {% set minutes = order.eta_minutes if (order.eta_minutes and order.status.value == "preparing") else (settings.estimated_delivery_minutes if order.order_type.value == "delivery" else settings.estimated_pickup_minutes) %}
   <p class="thanks-eta">
     {% if shop.state == "preorder" %}Wir öffnen um <strong>{{ shop.opens_text }}</strong>, danach {{ "geliefert" if order.order_type.value == "delivery" else "abholbereit" }} in ca. {{ minutes }} Minuten.
     {% else %}Voraussichtlich {{ "geliefert" if order.order_type.value == "delivery" else "abholbereit" }} in ca. <strong>{{ minutes }} Minuten</strong> (unverbindlicher Richtwert).{% endif %}
