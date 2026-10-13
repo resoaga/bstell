@@ -249,3 +249,23 @@ def order_history(limit: int = 200, days: int = 7, db: Session = Depends(get_db)
         .all()
     )
     return [_order_json(o) for o in orders]
+
+
+@router.get("/heute", dependencies=[Depends(require_freiwirt_token)])
+def today_summary(db: Session = Depends(get_db)):
+    """Today's numbers (local midnight on): orders, pickup/delivery split, revenue. Cancelled orders don't count."""
+    from ..timeutil import local_midnight_utc
+
+    orders = (
+        db.query(Order)
+        .filter(Order.created_at >= local_midnight_utc(), Order.status != OrderStatus.awaiting_payment)
+        .all()
+    )
+    kept = [o for o in orders if o.status != OrderStatus.cancelled]
+    return {
+        "orders": len(kept),
+        "pickup": sum(1 for o in kept if o.order_type.value == "pickup"),
+        "delivery": sum(1 for o in kept if o.order_type.value == "delivery"),
+        "revenue": round(sum(o.total for o in kept), 2),
+        "cancelled": len(orders) - len(kept),
+    }
