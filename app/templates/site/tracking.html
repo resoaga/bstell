@@ -2,7 +2,6 @@
 {% block title %}Meine Bestellungen – {{ settings.name }}{% endblock %}
 {% block head_extra %}
 <meta name="robots" content="noindex">
-{% if refresh %}<meta http-equiv="refresh" content="30">{% endif %}
 {% endblock %}
 {% block content %}
 
@@ -66,8 +65,10 @@
 {% if not_found %}
 <p class="notice">Diese Bestellung wurde nicht gefunden. Bitte den Link aus der Bestätigung verwenden.</p>
 {% else %}
+<div id="live"{% if refresh %} hx-get="{{ request.url.path }}" hx-trigger="every 10s" hx-select="#live" hx-swap="outerHTML"{% endif %}>
 {{ order_card(orders[0]) }}
-{% if refresh %}<p class="hint">Diese Seite aktualisiert sich alle 30 Sekunden.</p>{% endif %}
+{% if refresh %}<p class="hint">Der Status aktualisiert sich automatisch.</p>{% endif %}
+</div>
 {% endif %}
 <p><a class="text-link" href="/verfolgen">Alle meine Bestellungen</a></p>
 
@@ -84,8 +85,10 @@
 {% endif %}
 
 {% if orders %}
+<div id="live"{% if refresh %} hx-get="{{ request.url.path }}" hx-trigger="every 10s" hx-select="#live" hx-swap="outerHTML"{% endif %}>
 {% for order in orders %}{{ order_card(order) }}{% endfor %}
-{% if refresh %}<p class="hint">Diese Seite aktualisiert sich alle 30 Sekunden.</p>{% endif %}
+{% if refresh %}<p class="hint">Der Status aktualisiert sich automatisch.</p>{% endif %}
+</div>
 {% else %}
 <p class="empty">Auf diesem Gerät sind noch keine Bestellungen gespeichert.</p>
 {% endif %}

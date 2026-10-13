@@ -10,16 +10,26 @@
 </div>
 
 <section class="category">
-  {% if order.status.value == "cancelled" %}<div class="cancel-banner" role="alert"><strong>Diese Bestellung wurde storniert.</strong>{% if order.cancel_reason %}<span>Grund: {{ order.cancel_reason }}</span>{% endif %}</div>{% endif %}
+  {% set st = order.status.value %}
+  {# Nur dieser Block wird alle 10 s per htmx neu geholt (Status, Zeit), nicht die ganze Seite. Bei fertig/storniert hört das Nachladen von selbst auf. #}
+  <div id="live"{% if st in ("received", "preparing", "ready") %} hx-get="/bestellung/{{ order.id }}/bestaetigung" hx-trigger="every 10s" hx-select="#live" hx-swap="outerHTML"{% endif %}>
+  {% if st == "cancelled" %}<div class="cancel-banner" role="alert"><strong>Diese Bestellung wurde storniert.</strong>{% if order.cancel_reason %}<span>Grund: {{ order.cancel_reason }}</span>{% endif %}</div>{% endif %}
   <p>
-    <span class="status-badge status-{{ order.status.value }}">{{ order.customer_status_label }}</span>
+    <span class="status-badge status-{{ st }}">{{ order.customer_status_label }}</span>
     <span class="type-label">{{ type_label }} · {% if order.payment_method == "online" %}online bezahlt{% else %}{{ payment_labels.get(order.payment_method, "") }} bei Übergabe{% endif %}</span>
   </p>
-  {% set minutes = order.eta_minutes if (order.eta_minutes and order.status.value == "preparing") else (settings.estimated_delivery_minutes if order.order_type.value == "delivery" else settings.estimated_pickup_minutes) %}
+  {% set delivery = order.order_type.value == "delivery" %}
+  {% if st in ("received", "preparing") %}
+  {% set minutes = remaining if (st == "preparing" and remaining is not none and order.eta_minutes) else (settings.estimated_delivery_minutes if delivery else settings.estimated_pickup_minutes) %}
   <p class="thanks-eta">
-    {% if shop.state == "preorder" %}Wir öffnen um <strong>{{ shop.opens_text }}</strong>, danach {{ "geliefert" if order.order_type.value == "delivery" else "abholbereit" }} in ca. {{ minutes }} Minuten.
-    {% else %}Voraussichtlich {{ "geliefert" if order.order_type.value == "delivery" else "abholbereit" }} in ca. <strong>{{ minutes }} Minuten</strong> (unverbindlicher Richtwert).{% endif %}
+    {% if shop.state == "preorder" and st == "received" %}Wir öffnen um <strong>{{ shop.opens_text }}</strong>, danach {{ "geliefert" if delivery else "abholbereit" }} in ca. {{ minutes }} Minuten.
+    {% elif st == "preparing" and order.eta_minutes %}{% if minutes > 0 %}Wird {{ "geliefert" if delivery else "abholbereit" }} in ca. <strong>{{ minutes }} Minuten</strong>.{% else %}Sollte gleich {{ "bei dir sein" if delivery else "abholbereit sein" }}.{% endif %}
+    {% else %}Voraussichtlich {{ "geliefert" if delivery else "abholbereit" }} in ca. <strong>{{ minutes }} Minuten</strong> (unverbindlicher Richtwert).{% endif %}
   </p>
+  {% elif st == "ready" %}
+  <p class="thanks-eta"><strong>{% if delivery %}Deine Bestellung ist unterwegs zu dir.{% else %}Deine Bestellung kann abgeholt werden.{% endif %}</strong></p>
+  {% endif %}
+  </div>
   {% if order.delivery_address %}<p class="hint">Lieferadresse: {{ order.delivery_address }}, {{ order.customer_zip }} {{ order.customer_city }}</p>
   {% elif order.order_type.value == "pickup" and settings.address_street %}<p class="hint">Abholung bei: {{ settings.address_street }}, {{ settings.address_zip }} {{ settings.address_city }}</p>{% endif %}
 
