@@ -187,6 +187,7 @@ def _order_json(order: Order) -> dict:
         "cancel_reason": order.cancel_reason or "",
         "accepted_at": order.accepted_at.isoformat() if order.accepted_at else None,
         "eta_minutes": order.eta_minutes,
+        "ready_at": order.ready_at.isoformat() if order.ready_at else None,
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
@@ -226,6 +227,8 @@ def set_order_status(order_id: int, payload: OrderStatusIn, request: Request, ba
         order.accepted_at = datetime.utcnow()
         if payload.eta_minutes:
             order.eta_minutes = max(1, min(payload.eta_minutes, 240))
+    if payload.status == OrderStatus.ready:
+        order.ready_at = datetime.utcnow()
     if payload.status == OrderStatus.cancelled:
         order.cancel_reason = (payload.reason or "").strip()[:200]
     db.commit()

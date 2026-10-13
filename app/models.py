@@ -182,6 +182,7 @@ class Order(Base):
     cancel_reason = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     accepted_at = Column(DateTime, nullable=True)  # when the kitchen accepted it (status preparing)
+    ready_at = Column(DateTime, nullable=True)  # when it became ready/on the way (kitchen reminder to hand over)
     eta_minutes = Column(Integer, nullable=True)  # promised time from acceptance, shown to the customer
 
     items = relationship(
