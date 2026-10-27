@@ -42,6 +42,7 @@ COLUMNS = [
     ("orders", "accepted_at", "DATETIME"),
     ("orders", "eta_minutes", "INTEGER"),
     ("orders", "ready_at", "DATETIME"),
+    ("order_items", "options_json", "TEXT DEFAULT ''"),
 ]
 
 con = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else "bestellsystem.db")

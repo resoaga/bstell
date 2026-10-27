@@ -3,6 +3,7 @@ Freiwirt is the only caller, never the public website — auth is a single
 shared token per installation, not the admin login, since there is no
 browser/session involved."""
 
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -42,6 +43,9 @@ def _shop_json(db: Session) -> dict:
         "pickup_minutes": settings.estimated_pickup_minutes or 0,
         "delivery_minutes": settings.estimated_delivery_minutes or 0,
         "cancel_reasons": reasons or list(DEFAULT_CANCEL_REASONS),
+        "name": settings.name or "",
+        "address": ", ".join(x for x in (settings.address_street, f"{settings.address_zip} {settings.address_city}".strip()) if x),
+        "phone": settings.phone or "",
     }
 
 
@@ -170,6 +174,14 @@ ALLOWED_TRANSITIONS = {
 }
 
 
+def _extras(item) -> list:
+    """Gewählte Extras mit Preis je Stück; leer bei alten Bestellungen ohne Einzelpreise."""
+    try:
+        return json.loads(item.options_json) if item.options_json else []
+    except ValueError:
+        return []
+
+
 def _order_json(order: Order) -> dict:
     return {
         "id": order.id,
@@ -192,7 +204,13 @@ def _order_json(order: Order) -> dict:
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
         "items": [
-            {"name": i.item_name, "options": i.options_summary, "quantity": i.quantity, "unit_price": i.unit_price}
+            {
+                "name": i.item_name,
+                "options": i.options_summary,
+                "extras": _extras(i),
+                "quantity": i.quantity,
+                "unit_price": i.unit_price,
+            }
             for i in order.items
         ],
     }

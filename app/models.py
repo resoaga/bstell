@@ -232,6 +232,7 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     item_name = Column(String, nullable=False)
     options_summary = Column(String, default="")
+    options_json = Column(Text, default="")  # [{"name":..., "price":...}] pro gewähltem Extra (Preis je Stück), für den Bon
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
 

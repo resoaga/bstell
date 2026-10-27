@@ -493,6 +493,7 @@ async def place_order(request: Request, background: BackgroundTasks, db: Session
             OrderItem(
                 item_name=line["item"].name,
                 options_summary=", ".join(o.name for o in line["options"]),
+                options_json=json.dumps([{"name": o.name, "price": o.price_delta} for o in line["options"]], ensure_ascii=False),
                 unit_price=line["unit_price"],
                 quantity=line["quantity"],
             )
