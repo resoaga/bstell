@@ -203,7 +203,6 @@ def _order_json(order: Order) -> dict:
         "note": order.note,
         "total": order.total,
         "service_fee": order.service_fee or 0.0,
-        "service_fee_label": order.service_fee_text or "Servicegebühr",  # so, wie der Kunde es bei der Bestellung sah
         "delivery_fee": order.delivery_fee_paid,
         "goods_total": order.goods_total,
         "items": [

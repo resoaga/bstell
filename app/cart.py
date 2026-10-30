@@ -125,9 +125,9 @@ def service_fee_for(settings, goods_total: float) -> float:
 
 
 def service_fee_text(settings) -> str:
-    """Label with the rate, e.g. "Servicegebühr (2 % + CHF 0.30)"; stored on the order so
+    """Label with the rate, e.g. "Liefergebühr (2 % + CHF 0.30)"; stored on the order so
     old receipts keep showing the rate that applied when they were placed."""
-    label = settings.service_fee_label or "Servicegebühr"
+    label = settings.service_fee_label or "Liefergebühr"
     mode = settings.service_fee_mode
     parts = []
     if mode != "fixed" and settings.service_fee_percent:

@@ -78,7 +78,7 @@ def send_confirmation(order_id: int, base_url: str, force: bool = False) -> None
         if order.delivery_fee_paid:
             extra.append(("Lieferung", f"CHF {order.delivery_fee_paid:.2f}"))
         if order.service_fee:
-            extra.append((order.service_fee_text or settings.service_fee_label or "Servicegebühr", f"CHF {order.service_fee:.2f}"))
+            extra.append((order.service_fee_text or settings.service_fee_label or "Liefergebühr", f"CHF {order.service_fee:.2f}"))
 
         # ---- HTML ----
         body = (

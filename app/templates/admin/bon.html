@@ -35,7 +35,7 @@
 {% if order.service_fee or order.delivery_fee_paid %}
 <div class="row"><span>Waren</span><span>{{ "%.2f"|format(order.goods_total) }}</span></div>
 {% if order.delivery_fee_paid %}<div class="row"><span>Lieferung</span><span>{{ "%.2f"|format(order.delivery_fee_paid) }}</span></div>{% endif %}
-{% if order.service_fee %}<div class="row"><span>{{ order.service_fee_text or "Servicegebühr" }}</span><span>{{ "%.2f"|format(order.service_fee) }}</span></div>{% endif %}
+{% if order.service_fee %}<div class="row"><span>{{ order.service_fee_text or "Liefergebühr" }}</span><span>{{ "%.2f"|format(order.service_fee) }}</span></div>{% endif %}
 {% endif %}
 <div class="row big"><span>TOTAL CHF</span><span>{{ "%.2f"|format(order.total) }}</span></div>
 <div class="c">{% if order.payment_method == "online" %}ONLINE BEZAHLT{% elif order.payment_method == "card" %}Zahlung: Karte / Twint bei Übergabe{% else %}Zahlung: BAR bei Übergabe{% endif %}</div>

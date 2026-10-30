@@ -178,7 +178,7 @@ class Order(Base):
     status = Column(Enum(OrderStatus), default=OrderStatus.received, nullable=False)
     total = Column(Float, nullable=False, default=0.0)
     service_fee = Column(Float, default=0.0)
-    service_fee_text = Column(String, default="")  # e.g. "Servicegebühr (2 % + CHF 0.30)" as it was when ordered
+    service_fee_text = Column(String, default="")  # e.g. "Liefergebühr (2 % + CHF 0.30)" as it was when ordered
     cancel_reason = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     accepted_at = Column(DateTime, nullable=True)  # when the kitchen accepted it (status preparing)
@@ -285,7 +285,7 @@ class RestaurantSettings(Base):
     service_fee_mode = Column(String, default="percent")  # "percent" | "fixed"
     service_fee_percent = Column(Float, default=2.0)
     service_fee_fixed = Column(Float, default=0.0)
-    service_fee_label = Column(String, default="Servicegebühr")
+    service_fee_label = Column(String, default="Liefergebühr")
 
     # Postcodes we deliver to (comma/space separated). Empty = no restriction.
     delivery_zips = Column(String, default="")
